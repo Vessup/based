@@ -1,4 +1,7 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react"
+"use client"
+
+import { Calendar, Database, Home, Inbox, Search, Settings, Table } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import {
   Sidebar,
@@ -10,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { fetchDatabaseTables } from "@/lib/actions"
 
 // Menu items.
 const items = [
@@ -41,6 +45,31 @@ const items = [
 ]
 
 export function AppSidebar() {
+  const [tables, setTables] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadTables() {
+      try {
+        const result = await fetchDatabaseTables()
+
+        if (result.error) {
+          setError(result.error)
+        } else {
+          setTables(result.tables)
+        }
+      } catch (err) {
+        console.error("Failed to fetch database tables:", err)
+        setError("Failed to load database tables")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadTables()
+  }, [])
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -58,6 +87,47 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <Database className="mr-2 h-4 w-4" />
+            Database Tables
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {loading ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <span>Loading tables...</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : error ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <span>{error}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : tables.length === 0 ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <span>No tables found</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : (
+                tables.map((tableName) => (
+                  <SidebarMenuItem key={tableName}>
+                    <SidebarMenuButton asChild>
+                      <a href={`/tables/${tableName}`}>
+                        <Table className="h-4 w-4" />
+                        <span>{tableName}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
