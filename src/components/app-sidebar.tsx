@@ -47,10 +47,6 @@ export function AppSidebar() {
   const [refreshing, setRefreshing] = useState(false);
   const [tableToDelete, setTableToDelete] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteStatus, setDeleteStatus] = useState<{
-    loading: boolean;
-    error: string | null;
-  }>({ loading: false, error: null });
 
   // Function to load tables
   const loadTables = useCallback(async () => {
@@ -83,25 +79,17 @@ export function AppSidebar() {
     if (!tableToDelete) return;
 
     try {
-      setDeleteStatus({ loading: true, error: null });
       const result = await deleteTableAction(tableToDelete);
 
-      if (result.success) {
-        // Refresh the tables list after successful deletion
-        await loadTables();
-      } else {
-        setDeleteStatus({ loading: false, error: result.message });
-      }
+      // Refresh the tables list after successful deletion
+      await loadTables();
     } catch (err) {
       console.error("Error deleting table:", err);
-      setDeleteStatus({ loading: false, error: "An unexpected error occurred" });
     } finally {
       setIsDeleteDialogOpen(false);
       setTableToDelete(null);
-      setDeleteStatus({ loading: false, error: null });
     }
   };
-
 
   return (
     <>
@@ -192,23 +180,17 @@ export function AppSidebar() {
               Are you sure you want to delete the table <strong>{tableToDelete}</strong>?
               <br />
               This action cannot be undone and all data in this table will be permanently lost.
-              {deleteStatus.error && (
-                <div className="mt-2 text-red-500 text-sm font-medium">
-                  Error: {deleteStatus.error}
-                </div>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteStatus.loading}>
+            <AlertDialogCancel>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDeleteTable}
-              disabled={deleteStatus.loading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteStatus.loading ? "Deleting..." : "Delete"}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

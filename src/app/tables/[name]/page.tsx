@@ -288,7 +288,7 @@ export default function TablePage() {
         <Button
           onClick={openDeleteDialog}
           disabled={selectedRows.length === 0 || isDeleting}
-          variant="destructive"
+          className="bg-red-600 hover:bg-red-700 text-white"
           size="sm"
         >
           {isDeleting ? 'Deleting...' : `Delete Selected (${selectedRows.length})`}
@@ -310,7 +310,7 @@ export default function TablePage() {
               onClick={handleDeleteSelected}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -318,7 +318,7 @@ export default function TablePage() {
 
       <div className="rounded-md border">
         <Table>
-          <TableCaption>
+          <TableCaption className="pb-6">
             Showing {data.length} of {pagination.total} records
           </TableCaption>
           <TableHeader>
@@ -345,7 +345,7 @@ export default function TablePage() {
               const isSelected = selectedRows.includes(rowKey);
 
               return (
-                <TableRow key={rowKey} className={isSelected ? "bg-slate-100" : ""}>
+                <TableRow key={rowKey} className={isSelected ? "bg-zinc-100 dark:bg-zinc-800" : ""}>
                   <TableCell>
                     <input
                       type="checkbox"
