@@ -264,3 +264,43 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
     };
   }
 }
+
+/**
+ * Deletes a table from the database
+ * @param tableName The name of the table to delete
+ * @returns Object containing success status and message
+ */
+export async function deleteTable(tableName: string) {
+  try {
+    // First, verify the table exists
+    const tableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+      ) AS exists;
+    `;
+
+    if (!tableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${tableName}' does not exist`
+      };
+    }
+
+    // Execute the drop table operation
+    console.log(`Dropping table: ${tableName}`);
+    await db`DROP TABLE ${db(tableName)} CASCADE;`;
+
+    return {
+      success: true,
+      message: `Successfully deleted table '${tableName}'`
+    };
+  } catch (error) {
+    console.error(`Error deleting table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to delete table: ${error}`
+    };
+  }
+}

@@ -288,7 +288,8 @@ export default function TablePage() {
         <Button
           onClick={openDeleteDialog}
           disabled={selectedRows.length === 0 || isDeleting}
-          className="bg-red-600 hover:bg-red-700 text-white"
+          variant="destructive"
+          size="sm"
         >
           {isDeleting ? 'Deleting...' : `Delete Selected (${selectedRows.length})`}
         </Button>

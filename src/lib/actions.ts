@@ -1,6 +1,6 @@
 "use server";
 
-import { getTables, getTableData, getTableColumns, deleteTableRows } from "./db";
+import { getTables, getTableData, getTableColumns, deleteTableRows, deleteTable } from "./db";
 
 /**
  * Server action to fetch all database tables
@@ -56,6 +56,27 @@ export async function deleteRows(tableName: string, ids: string[]) {
       success: false,
       message: `Failed to delete rows from table ${tableName}`,
       deletedCount: 0,
+      error: String(error)
+    };
+  }
+}
+
+/**
+ * Server action to delete a table from the database
+ */
+export async function deleteTableAction(tableName: string) {
+  try {
+    const result = await deleteTable(tableName);
+    return {
+      success: result.success,
+      message: result.message,
+      error: null
+    };
+  } catch (error) {
+    console.error(`Error deleting table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to delete table ${tableName}`,
       error: String(error)
     };
   }

@@ -37,3 +37,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 Change the theme such that it defaults to the user's system preference and add a
 light mode / dark mode toggle to the sidebar.
+
+Add a context menu using the shadcn/ui component at src/components/ui/context-menu.tsx when you right click on a table
+so that you can delete the table. Use the alert dialog component to confirm the delete and implement deleting the table.
