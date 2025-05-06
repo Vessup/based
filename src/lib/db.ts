@@ -174,21 +174,76 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
       return { success: false, deletedCount: 0, message: "No IDs provided" };
     }
 
+    // First, verify the table exists and get its columns
+    // Note: We need to be careful with table names that are reserved keywords
+    console.log(`Checking columns for table: ${tableName}`);
+    const tableColumns = await db`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      AND table_name = ${tableName};
+    `;
+
+    if (tableColumns.length === 0) {
+      return {
+        success: false,
+        deletedCount: 0,
+        message: `Table '${tableName}' does not exist or has no columns`
+      };
+    }
+
+    // Get column names as an array for easier checking
+    const columnNames = tableColumns.map((col: { column_name: string }) => col.column_name);
+    console.log(`Available columns in table ${tableName}:`, columnNames);
+
     // Determine the primary key column
     const primaryKeyResult = await db`
       SELECT a.attname as column_name
       FROM pg_index i
       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-      WHERE i.indrelid = ${db(tableName)}::regclass
+      WHERE i.indrelid = ${tableName}::regclass
       AND i.indisprimary;
     `;
 
     // If no primary key is found, try common ID column names
-    const primaryKeyColumn = primaryKeyResult.length > 0
-      ? primaryKeyResult[0].column_name
-      : 'id'; // Default to 'id' if no primary key found
+    let primaryKeyColumn: string;
+    if (primaryKeyResult.length > 0) {
+      primaryKeyColumn = primaryKeyResult[0].column_name;
+      console.log(`Found primary key column: ${primaryKeyColumn}`);
+    } else {
+      // Try common ID column names, but verify they exist in the table
+      const commonIdColumns = ['id', 'ID', 'uuid', 'UUID'];
+      const foundColumn = commonIdColumns.find(col => columnNames.includes(col));
+
+      if (!foundColumn) {
+        return {
+          success: false,
+          deletedCount: 0,
+          message: `Could not determine primary key column for table '${tableName}'`
+        };
+      }
+      primaryKeyColumn = foundColumn;
+      console.log(`Using common ID column: ${primaryKeyColumn}`);
+    }
+
+    // Verify the primary key column exists in the table
+    if (!columnNames.includes(primaryKeyColumn)) {
+      return {
+        success: false,
+        deletedCount: 0,
+        message: `Primary key column '${primaryKeyColumn}' does not exist in table '${tableName}'`
+      };
+    }
 
     // Execute the delete operation
+    console.log(`Deleting from table ${tableName} where ${primaryKeyColumn} IN (${ids.join(', ')})`);
+
+    // Let's see what db(tableName) actually produces
+    console.log("db(tableName):", db(tableName));
+    console.log("db(primaryKeyColumn):", db(primaryKeyColumn));
+    console.log("db(ids):", db(ids));
+
+    // Use the standard approach without the extra quotes
     const result = await db`
       DELETE FROM ${db(tableName)}
       WHERE ${db(primaryKeyColumn)} IN ${db(ids)}
