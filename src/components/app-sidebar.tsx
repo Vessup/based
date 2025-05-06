@@ -1,7 +1,15 @@
-"use client"
+"use client";
 
-import { Calendar, Database, Home, Inbox, Search, Settings, Table } from "lucide-react"
-import { useEffect, useState } from "react"
+import {
+  Calendar,
+  Database,
+  Home,
+  Inbox,
+  Search,
+  Settings,
+  Table,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 import {
   Sidebar,
@@ -12,34 +20,34 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { fetchDatabaseTables } from "@/lib/actions"
+} from "@/components/ui/sidebar";
+import { fetchDatabaseTables } from "@/lib/actions";
 
 export function AppSidebar() {
-  const [tables, setTables] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [tables, setTables] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadTables() {
       try {
-        const result = await fetchDatabaseTables()
+        const result = await fetchDatabaseTables();
 
         if (result.error) {
-          setError(result.error)
+          setError(result.error);
         } else {
-          setTables(result.tables)
+          setTables(result.tables);
         }
       } catch (err) {
-        console.error("Failed to fetch database tables:", err)
-        setError("Failed to load database tables")
+        console.error("Failed to fetch database tables:", err);
+        setError("Failed to load database tables");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    loadTables()
-  }, [])
+    loadTables();
+  }, []);
 
   return (
     <Sidebar>
@@ -86,5 +94,5 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export default async function seedDb() {
   logger.info("Executing seedDb");

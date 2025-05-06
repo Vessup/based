@@ -6,7 +6,9 @@
     "dev": "bun --bun next dev",
     "build": "bun --bun next build",
     "start": "bun --bun next start",
-    "lint": "next lint",
+    "format": "biome format --write",
+    "lint": "biome lint --write",
+    "check": "biome check --write",
     "docker": "docker compose up",
     "setupDb": "bun scripts/setupDb.ts",
     "seedDb": "bun scripts/seedDb.ts"
@@ -30,6 +32,7 @@
     "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@tailwindcss/postcss": "^4",
     "@types/bun": "^1.2.12",
     "@types/node": "^20",
