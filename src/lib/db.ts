@@ -9,7 +9,60 @@ export const config = {
   database: process.env.POSTGRES_DB || "based",
 };
 
-export const db = new SQL(config);
+// Singleton pattern to prevent multiple connections during hot module replacement
+let dbInstance: SQL | null = null;
+
+// Use global variable to persist connection across hot reloads
+declare global {
+  var dbGlobal: SQL | undefined;
+}
+
+// Get or create the database connection
+function getDbConnection() {
+  // Check if we already have an instance in the module
+  if (dbInstance) {
+    return dbInstance;
+  }
+
+  // Check if we have an instance in the global object (persists across hot reloads)
+  if (global.dbGlobal) {
+    dbInstance = global.dbGlobal;
+    return dbInstance;
+  }
+
+  // Create a new instance if none exists
+  console.log("Creating new database connection");
+  dbInstance = new SQL(config);
+  global.dbGlobal = dbInstance;
+
+  return dbInstance;
+}
+
+// Export the database connection
+export const db = getDbConnection();
+
+// Add cleanup for the database connection
+if (process.env.NODE_ENV !== 'production') {
+  // Handle cleanup in development mode
+  process.on('SIGTERM', () => {
+    console.log('Closing database connection due to SIGTERM');
+    if (dbInstance) {
+      dbInstance.close();
+      dbInstance = null;
+      global.dbGlobal = undefined;
+    }
+  });
+
+  process.on('SIGINT', () => {
+    console.log('Closing database connection due to SIGINT');
+    if (dbInstance) {
+      dbInstance.close();
+      dbInstance = null;
+      global.dbGlobal = undefined;
+    }
+    process.exit(0);
+  });
+}
 
 /**
  * Fetches all table names from the current database
@@ -105,6 +158,54 @@ export async function getTableData(tableName: string, page = 1, pageSize = 10) {
         pageSize,
         pageCount: 0,
       }
+    };
+  }
+}
+
+/**
+ * Deletes records from a specific table by their IDs
+ * @param tableName The name of the table to delete from
+ * @param ids Array of IDs to delete
+ * @returns Object containing success status and number of deleted records
+ */
+export async function deleteTableRows(tableName: string, ids: string[]) {
+  try {
+    if (!ids.length) {
+      return { success: false, deletedCount: 0, message: "No IDs provided" };
+    }
+
+    // Determine the primary key column
+    const primaryKeyResult = await db`
+      SELECT a.attname as column_name
+      FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+      WHERE i.indrelid = ${db(tableName)}::regclass
+      AND i.indisprimary;
+    `;
+
+    // If no primary key is found, try common ID column names
+    const primaryKeyColumn = primaryKeyResult.length > 0
+      ? primaryKeyResult[0].column_name
+      : 'id'; // Default to 'id' if no primary key found
+
+    // Execute the delete operation
+    const result = await db`
+      DELETE FROM ${db(tableName)}
+      WHERE ${db(primaryKeyColumn)} IN ${db(ids)}
+      RETURNING ${db(primaryKeyColumn)};
+    `;
+
+    return {
+      success: true,
+      deletedCount: result.length,
+      message: `Successfully deleted ${result.length} records`
+    };
+  } catch (error) {
+    console.error(`Error deleting rows from table ${tableName}:`, error);
+    return {
+      success: false,
+      deletedCount: 0,
+      message: `Failed to delete rows: ${error}`
     };
   }
 }

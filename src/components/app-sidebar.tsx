@@ -5,11 +5,14 @@ import {
   Database,
   Home,
   Inbox,
+  RefreshCw,
   Search,
   Settings,
   Table,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -27,35 +30,53 @@ export function AppSidebar() {
   const [tables, setTables] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    async function loadTables() {
-      try {
-        const result = await fetchDatabaseTables();
+  // Function to load tables
+  const loadTables = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const result = await fetchDatabaseTables();
 
-        if (result.error) {
-          setError(result.error);
-        } else {
-          setTables(result.tables);
-        }
-      } catch (err) {
-        console.error("Failed to fetch database tables:", err);
-        setError("Failed to load database tables");
-      } finally {
-        setLoading(false);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setTables(result.tables);
+        setError(null);
       }
+    } catch (err) {
+      console.error("Failed to fetch database tables:", err);
+      setError("Failed to load database tables");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    loadTables();
   }, []);
+
+  // Load tables on initial render only
+  useEffect(() => {
+    loadTables();
+  }, [loadTables]);
 
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>
-            <Database className="mr-2 h-4 w-4" />
-            Database Tables
+          <SidebarGroupLabel className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Database className="mr-2 h-4 w-4" />
+              Database Tables
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={loadTables}
+              disabled={refreshing}
+              className="h-6 w-6"
+              title="Refresh tables list"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </Button>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -81,10 +102,10 @@ export function AppSidebar() {
                 tables.map((tableName) => (
                   <SidebarMenuItem key={tableName}>
                     <SidebarMenuButton asChild>
-                      <a href={`/tables/${tableName}`}>
+                      <Link href={`/tables/${tableName}`}>
                         <Table className="h-4 w-4" />
                         <span>{tableName}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))

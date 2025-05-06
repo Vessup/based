@@ -1,6 +1,6 @@
 "use server";
 
-import { getTables, getTableData, getTableColumns } from "./db";
+import { getTables, getTableData, getTableColumns, deleteTableRows } from "./db";
 
 /**
  * Server action to fetch all database tables
@@ -34,6 +34,29 @@ export async function fetchTableData(tableName: string, page = 1, pageSize = 10)
       data: { records: [], pagination: { total: 0, page, pageSize, pageCount: 0 } },
       columns: [],
       error: `Failed to fetch data from table ${tableName}`
+    };
+  }
+}
+
+/**
+ * Server action to delete rows from a table
+ */
+export async function deleteRows(tableName: string, ids: string[]) {
+  try {
+    const result = await deleteTableRows(tableName, ids);
+    return {
+      success: result.success,
+      message: result.message,
+      deletedCount: result.deletedCount,
+      error: null
+    };
+  } catch (error) {
+    console.error(`Error deleting rows from table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to delete rows from table ${tableName}`,
+      deletedCount: 0,
+      error: String(error)
     };
   }
 }

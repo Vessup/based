@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { RefreshCw } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,7 +21,18 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { fetchTableData } from "@/lib/actions";
+import { Button } from "@/components/ui/button";
+import { fetchTableData, deleteRows } from "@/lib/actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Define types for our data
 type ColumnInfo = {
@@ -46,6 +58,7 @@ export default function TablePage() {
 
   // State for data
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
@@ -56,32 +69,111 @@ export default function TablePage() {
     pageCount: 0,
   });
 
-  // Fetch data on component mount and when params change
-  useEffect(() => {
-    async function loadTableData() {
-      if (!tableName) return;
+  // State for selected rows
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-      setLoading(true);
-      try {
-        const result = await fetchTableData(tableName, page, pageSize);
+  // Handle checkbox change
+  const handleCheckboxChange = (rowKey: string) => {
+    setSelectedRows(prev =>
+      prev.includes(rowKey)
+        ? prev.filter(id => id !== rowKey)
+        : [...prev, rowKey]
+    );
+  };
 
-        if (result.error) {
-          setError(result.error);
-        } else {
-          setData(result.data.records);
-          setColumns(result.columns);
-          setPagination(result.data.pagination);
-          setError(null);
-        }
-      } catch (err) {
-        setError(`Failed to load table data: ${err}`);
-      } finally {
-        setLoading(false);
+  // Handle select all checkboxes
+  const handleSelectAll = () => {
+    if (selectedRows.length === data.length) {
+      // If all are selected, unselect all
+      setSelectedRows([]);
+    } else {
+      // Otherwise, select all
+      const allRowKeys = data.map((row, index) =>
+        String(row.id || row.ID || row.uuid || row.UUID || `row-${index}`)
+      );
+      setSelectedRows(allRowKeys);
+    }
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = () => {
+    if (selectedRows.length === 0) return;
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Handle delete selected rows
+  const handleDeleteSelected = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteRows(tableName, selectedRows);
+
+      if (result.success) {
+        setDeleteMessage({
+          text: `Successfully deleted ${result.deletedCount} row(s)`,
+          type: 'success'
+        });
+        // Clear selection
+        setSelectedRows([]);
+        // Reload the data
+        loadTableData();
+      } else {
+        setDeleteMessage({
+          text: result.message || 'Failed to delete rows',
+          type: 'error'
+        });
       }
+    } catch (error) {
+      setDeleteMessage({
+        text: `Error: ${error}`,
+        type: 'error'
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  // Function to load table data
+  const loadTableData = useCallback(async (isRefresh = false) => {
+    if (!tableName) return;
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
     }
 
-    loadTableData();
+    try {
+      const result = await fetchTableData(tableName, page, pageSize);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setData(result.data.records);
+        setColumns(result.columns);
+        setPagination(result.data.pagination);
+        setError(null);
+      }
+    } catch (err) {
+      setError(`Failed to load table data: ${err}`);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [tableName, page, pageSize]);
+
+  // Function to handle manual refresh
+  const handleRefresh = () => {
+    loadTableData(true);
+  };
+
+  // Fetch data on component mount and when params change
+  useEffect(() => {
+    loadTableData();
+  }, [loadTableData]);
 
   // Generate pagination items
   const renderPaginationItems = () => {
@@ -164,7 +256,19 @@ export default function TablePage() {
   if (data.length === 0) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Table: {tableName}</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Table: {tableName}</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
         <p>No records found in this table.</p>
       </div>
     );
@@ -174,6 +278,43 @@ export default function TablePage() {
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Table: {tableName}</h1>
 
+      {deleteMessage && (
+        <div className={`mb-4 p-2 rounded ${deleteMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {deleteMessage.text}
+        </div>
+      )}
+
+      <div className="mb-4">
+        <Button
+          onClick={openDeleteDialog}
+          disabled={selectedRows.length === 0 || isDeleting}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          {isDeleting ? 'Deleting...' : `Delete Selected (${selectedRows.length})`}
+        </Button>
+      </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will delete {selectedRows.length} selected row(s) from the {tableName} table.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSelected}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="rounded-md border">
         <Table>
           <TableCaption>
@@ -181,6 +322,14 @@ export default function TablePage() {
           </TableCaption>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <input
+                  type="checkbox"
+                  checked={data.length > 0 && selectedRows.length === data.length}
+                  onChange={handleSelectAll}
+                  className="h-4 w-4"
+                />
+              </TableHead>
               {columns.map((column) => (
                 <TableHead key={column.column_name}>
                   {column.column_name}
@@ -191,10 +340,19 @@ export default function TablePage() {
           <TableBody>
             {data.map((row, rowIndex) => {
               // Create a unique key from row data if possible, fallback to index if needed
-              const rowKey = row.id || row.ID || row.uuid || row.UUID || `row-${rowIndex}`;
+              const rowKey = String(row.id || row.ID || row.uuid || row.UUID || `row-${rowIndex}`);
+              const isSelected = selectedRows.includes(rowKey);
 
               return (
-                <TableRow key={String(rowKey)}>
+                <TableRow key={rowKey} className={isSelected ? "bg-slate-100" : ""}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleCheckboxChange(rowKey)}
+                      className="h-4 w-4"
+                    />
+                  </TableCell>
                   {columns.map((column) => (
                     <TableCell key={`${rowIndex}-${column.column_name}`}>
                       {row[column.column_name as keyof typeof row] !== null
