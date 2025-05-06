@@ -1,15 +1,11 @@
 "use client";
 
 import {
-  Calendar,
   Database,
-  Home,
-  Inbox,
   RefreshCw,
-  Search,
-  Settings,
   Table,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -113,6 +109,11 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Theme toggle at the bottom of sidebar */}
+        <div className="mt-auto pt-4 pb-2 flex justify-center">
+          <ThemeToggle />
+        </div>
       </SidebarContent>
     </Sidebar>
   );

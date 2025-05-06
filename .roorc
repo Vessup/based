@@ -1,0 +1,27 @@
+# Roo Configuration
+
+## Package Manager
+# Always use Bun for package management instead of npm or yarn
+package_manager: bun
+
+## Project Preferences
+# This section contains project-specific preferences
+project:
+  name: based
+  type: next.js
+
+## Command Preferences
+# This section contains preferred commands for common operations
+commands:
+  install: bun add
+  dev: bun dev
+  build: bun run build
+  start: bun start
+  test: bun test
+
+## Notes
+# Add any additional notes or instructions for Roo here
+notes: |
+  - Always use Bun for package management
+  - Use `bun add` instead of `npm install` for adding packages
+  - Use `bun dev` to start the development server
