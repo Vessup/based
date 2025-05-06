@@ -184,9 +184,6 @@ export default function TablePage() {
               {columns.map((column) => (
                 <TableHead key={column.column_name}>
                   {column.column_name}
-                  <span className="ml-1 text-xs text-gray-500">
-                    ({column.data_type})
-                  </span>
                 </TableHead>
               ))}
             </TableRow>
