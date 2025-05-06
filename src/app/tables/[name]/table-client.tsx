@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -20,7 +18,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { fetchTableData } from "@/lib/actions";
 
 // Define types for our data
 type ColumnInfo = {
@@ -36,53 +33,23 @@ type PaginationInfo = {
   pageCount: number;
 };
 
-export default function TablePage() {
-  // Get route params and search params
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const tableName = params.name as string;
-  const page = Number(searchParams.get("page") || "1");
-  const pageSize = Number(searchParams.get("pageSize") || "10");
+type TableClientProps = {
+  tableName: string;
+  data: Record<string, unknown>[];
+  columns: ColumnInfo[];
+  pagination: PaginationInfo;
+  currentPage: number;
+  pageSize: number;
+};
 
-  // State for data
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<Record<string, unknown>[]>([]);
-  const [columns, setColumns] = useState<ColumnInfo[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    total: 0,
-    page: 1,
-    pageSize: 10,
-    pageCount: 0,
-  });
-
-  // Fetch data on component mount and when params change
-  useEffect(() => {
-    async function loadTableData() {
-      if (!tableName) return;
-
-      setLoading(true);
-      try {
-        const result = await fetchTableData(tableName, page, pageSize);
-
-        if (result.error) {
-          setError(result.error);
-        } else {
-          setData(result.data.records);
-          setColumns(result.columns);
-          setPagination(result.data.pagination);
-          setError(null);
-        }
-      } catch (err) {
-        setError(`Failed to load table data: ${err}`);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadTableData();
-  }, [tableName, page, pageSize]);
-
+export default function TableClient({
+  tableName,
+  data,
+  columns,
+  pagination,
+  currentPage,
+  pageSize,
+}: TableClientProps) {
   // Generate pagination items
   const renderPaginationItems = () => {
     const items = [];
@@ -93,7 +60,7 @@ export default function TablePage() {
       <PaginationItem key="first">
         <PaginationLink
           href={`/tables/${tableName}?page=1&pageSize=${pageSize}`}
-          isActive={page === 1}
+          isActive={currentPage === 1}
         >
           1
         </PaginationLink>
@@ -101,7 +68,7 @@ export default function TablePage() {
     );
 
     // Calculate range of pages to show
-    const startPage = Math.max(2, page - Math.floor(maxVisiblePages / 2));
+    const startPage = Math.max(2, currentPage - Math.floor(maxVisiblePages / 2));
     const endPage = Math.min(pagination.pageCount - 1, startPage + maxVisiblePages - 2);
 
     // Adjust if we're near the beginning
@@ -119,7 +86,7 @@ export default function TablePage() {
         <PaginationItem key={i}>
           <PaginationLink
             href={`/tables/${tableName}?page=${i}&pageSize=${pageSize}`}
-            isActive={page === i}
+            isActive={currentPage === i}
           >
             {i}
           </PaginationLink>
@@ -142,7 +109,7 @@ export default function TablePage() {
         <PaginationItem key="last">
           <PaginationLink
             href={`/tables/${tableName}?page=${pagination.pageCount}&pageSize=${pageSize}`}
-            isActive={page === pagination.pageCount}
+            isActive={currentPage === pagination.pageCount}
           >
             {pagination.pageCount}
           </PaginationLink>
@@ -153,27 +120,12 @@ export default function TablePage() {
     return items;
   };
 
-  if (loading) {
-    return <div className="p-8">Loading table data...</div>;
-  }
-
-  if (error) {
-    return <div className="p-8 text-red-500">Error: {error}</div>;
-  }
-
   if (data.length === 0) {
-    return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Table: {tableName}</h1>
-        <p>No records found in this table.</p>
-      </div>
-    );
+    return <p>No records found in this table.</p>;
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Table: {tableName}</h1>
-
+    <>
       <div className="rounded-md border">
         <Table>
           <TableCaption>
@@ -218,9 +170,9 @@ export default function TablePage() {
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  href={`/tables/${tableName}?page=${Math.max(1, page - 1)}&pageSize=${pageSize}`}
-                  aria-disabled={page === 1}
-                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                  href={`/tables/${tableName}?page=${Math.max(1, currentPage - 1)}&pageSize=${pageSize}`}
+                  aria-disabled={currentPage === 1}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                 />
               </PaginationItem>
 
@@ -228,15 +180,15 @@ export default function TablePage() {
 
               <PaginationItem>
                 <PaginationNext
-                  href={`/tables/${tableName}?page=${Math.min(pagination.pageCount, page + 1)}&pageSize=${pageSize}`}
-                  aria-disabled={page === pagination.pageCount}
-                  className={page === pagination.pageCount ? "pointer-events-none opacity-50" : ""}
+                  href={`/tables/${tableName}?page=${Math.min(pagination.pageCount, currentPage + 1)}&pageSize=${pageSize}`}
+                  aria-disabled={currentPage === pagination.pageCount}
+                  className={currentPage === pagination.pageCount ? "pointer-events-none opacity-50" : ""}
                 />
               </PaginationItem>
             </PaginationContent>
           </Pagination>
         </div>
       )}
-    </div>
+    </>
   );
 }
