@@ -73,7 +73,7 @@ export async function getTableData(tableName: string, page = 1, pageSize = 10) {
     // This is safer than string concatenation
     const countResult = await db`
       SELECT COUNT(*) as total
-      FROM ${db.unsafe(`"${tableName}"`)}
+      FROM ${db(tableName)}
     `;
 
     const total = Number(countResult[0].total);
@@ -81,7 +81,7 @@ export async function getTableData(tableName: string, page = 1, pageSize = 10) {
     // Get records with pagination
     const records = await db`
       SELECT *
-      FROM ${db.unsafe(`"${tableName}"`)}
+      FROM ${db(tableName)}
       LIMIT ${pageSize}
       OFFSET ${offset}
     `;
