@@ -1,5 +1,4 @@
 import {
-  ansiColorFormatter,
   configure,
   getConsoleSink,
   getLogger,
@@ -7,7 +6,7 @@ import {
 export { getLogger } from "@logtape/logtape";
 
 await configure({
-  sinks: { console: getConsoleSink({ formatter: ansiColorFormatter }) },
+  sinks: { console: getConsoleSink() },
   loggers: [
     {
       category: ["logtape", "meta"],
