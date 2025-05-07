@@ -1,32 +1,11 @@
 "use client";
 
-import {
-  Database,
-  RefreshCw,
-  Table,
-  Trash2,
-} from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Database, RefreshCw, Table, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,8 +16,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { fetchDatabaseTables, deleteTableAction } from "@/lib/actions";
-
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { deleteTableAction, fetchDatabaseTables } from "@/lib/actions";
 
 export function AppSidebar() {
   const [tables, setTables] = useState<string[]>([]);
@@ -47,6 +41,10 @@ export function AppSidebar() {
   const [refreshing, setRefreshing] = useState(false);
   const [tableToDelete, setTableToDelete] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<{
+    loading: boolean;
+    error: string | null;
+  }>({ loading: false, error: null });
 
   // Function to load tables
   const loadTables = useCallback(async () => {
@@ -109,7 +107,9 @@ export function AppSidebar() {
                 className="h-6 w-6"
                 title="Refresh tables list"
               >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                />
               </Button>
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -149,7 +149,10 @@ export function AppSidebar() {
                             variant="destructive"
                             onClick={() => {
                               setTableToDelete(tableName);
-                              setIsDeleteDialogOpen(true);
+                              // Use setTimeout to ensure the context menu is fully closed before opening the dialog
+                              setTimeout(() => {
+                                setIsDeleteDialogOpen(true);
+                              }, 100);
                             }}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -172,25 +175,29 @@ export function AppSidebar() {
       </Sidebar>
 
       {/* Delete Table Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Table</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the table <strong>{tableToDelete}</strong>?
+              Are you sure you want to delete the table{" "}
+              <strong>{tableToDelete}</strong>?
               <br />
-              This action cannot be undone and all data in this table will be permanently lost.
+              This action cannot be undone and all data in this table will be
+              permanently lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDeleteTable}
+              disabled={deleteStatus.loading}
             >
-              Delete
+              {deleteStatus.loading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

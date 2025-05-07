@@ -42,10 +42,10 @@ function getDbConnection() {
 export const db = getDbConnection();
 
 // Add cleanup for the database connection
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   // Handle cleanup in development mode
-  process.on('SIGTERM', () => {
-    console.log('Closing database connection due to SIGTERM');
+  process.on("SIGTERM", () => {
+    console.log("Closing database connection due to SIGTERM");
     if (dbInstance) {
       dbInstance.close();
       dbInstance = null;
@@ -53,8 +53,8 @@ if (process.env.NODE_ENV !== 'production') {
     }
   });
 
-  process.on('SIGINT', () => {
-    console.log('Closing database connection due to SIGINT');
+  process.on("SIGINT", () => {
+    console.log("Closing database connection due to SIGINT");
     if (dbInstance) {
       dbInstance.close();
       dbInstance = null;
@@ -146,7 +146,7 @@ export async function getTableData(tableName: string, page = 1, pageSize = 10) {
         page,
         pageSize,
         pageCount: Math.ceil(total / pageSize),
-      }
+      },
     };
   } catch (error) {
     console.error(`Error fetching data from table ${tableName}:`, error);
@@ -157,7 +157,7 @@ export async function getTableData(tableName: string, page = 1, pageSize = 10) {
         page,
         pageSize,
         pageCount: 0,
-      }
+      },
     };
   }
 }
@@ -188,12 +188,14 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
       return {
         success: false,
         deletedCount: 0,
-        message: `Table '${tableName}' does not exist or has no columns`
+        message: `Table '${tableName}' does not exist or has no columns`,
       };
     }
 
     // Get column names as an array for easier checking
-    const columnNames = tableColumns.map((col: { column_name: string }) => col.column_name);
+    const columnNames = tableColumns.map(
+      (col: { column_name: string }) => col.column_name,
+    );
     console.log(`Available columns in table ${tableName}:`, columnNames);
 
     // Determine the primary key column
@@ -212,14 +214,16 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
       console.log(`Found primary key column: ${primaryKeyColumn}`);
     } else {
       // Try common ID column names, but verify they exist in the table
-      const commonIdColumns = ['id', 'ID', 'uuid', 'UUID'];
-      const foundColumn = commonIdColumns.find(col => columnNames.includes(col));
+      const commonIdColumns = ["id", "ID", "uuid", "UUID"];
+      const foundColumn = commonIdColumns.find((col) =>
+        columnNames.includes(col),
+      );
 
       if (!foundColumn) {
         return {
           success: false,
           deletedCount: 0,
-          message: `Could not determine primary key column for table '${tableName}'`
+          message: `Could not determine primary key column for table '${tableName}'`,
         };
       }
       primaryKeyColumn = foundColumn;
@@ -231,12 +235,14 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
       return {
         success: false,
         deletedCount: 0,
-        message: `Primary key column '${primaryKeyColumn}' does not exist in table '${tableName}'`
+        message: `Primary key column '${primaryKeyColumn}' does not exist in table '${tableName}'`,
       };
     }
 
     // Execute the delete operation
-    console.log(`Deleting from table ${tableName} where ${primaryKeyColumn} IN (${ids.join(', ')})`);
+    console.log(
+      `Deleting from table ${tableName} where ${primaryKeyColumn} IN (${ids.join(", ")})`,
+    );
 
     // Let's see what db(tableName) actually produces
     console.log("db(tableName):", db(tableName));
@@ -253,14 +259,14 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
     return {
       success: true,
       deletedCount: result.length,
-      message: `Successfully deleted ${result.length} records`
+      message: `Successfully deleted ${result.length} records`,
     };
   } catch (error) {
     console.error(`Error deleting rows from table ${tableName}:`, error);
     return {
       success: false,
       deletedCount: 0,
-      message: `Failed to delete rows: ${error}`
+      message: `Failed to delete rows: ${error}`,
     };
   }
 }
@@ -284,7 +290,7 @@ export async function deleteTable(tableName: string) {
     if (!tableExists[0].exists) {
       return {
         success: false,
-        message: `Table '${tableName}' does not exist`
+        message: `Table '${tableName}' does not exist`,
       };
     }
 
@@ -294,13 +300,13 @@ export async function deleteTable(tableName: string) {
 
     return {
       success: true,
-      message: `Successfully deleted table '${tableName}'`
+      message: `Successfully deleted table '${tableName}'`,
     };
   } catch (error) {
     console.error(`Error deleting table ${tableName}:`, error);
     return {
       success: false,
-      message: `Failed to delete table: ${error}`
+      message: `Failed to delete table: ${error}`,
     };
   }
 }

@@ -1,28 +1,5 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useSearchParams } from "next/navigation";
-import { RefreshCw } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Button } from "@/components/ui/button";
-import { fetchTableData, deleteRows } from "@/lib/actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +10,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { deleteRows, fetchTableData } from "@/lib/actions";
+import { RefreshCw, Trash2 } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 // Define types for our data
 type ColumnInfo = {
@@ -72,15 +78,22 @@ export default function TablePage() {
   // State for selected rows
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteMessage, setDeleteMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<string | null>(null);
+  const [pendingDeleteAction, setPendingDeleteAction] = useState<
+    "row" | "selected" | null
+  >(null);
 
   // Handle checkbox change
   const handleCheckboxChange = (rowKey: string) => {
-    setSelectedRows(prev =>
+    setSelectedRows((prev) =>
       prev.includes(rowKey)
-        ? prev.filter(id => id !== rowKey)
-        : [...prev, rowKey]
+        ? prev.filter((id) => id !== rowKey)
+        : [...prev, rowKey],
     );
   };
 
@@ -92,16 +105,30 @@ export default function TablePage() {
     } else {
       // Otherwise, select all
       const allRowKeys = data.map((row, index) =>
-        String(row.id || row.ID || row.uuid || row.UUID || `row-${index}`)
+        String(row.id || row.ID || row.uuid || row.UUID || `row-${index}`),
       );
       setSelectedRows(allRowKeys);
     }
   };
 
-  // Open delete confirmation dialog
+  // Open delete confirmation dialog for selected rows
   const openDeleteDialog = () => {
     if (selectedRows.length === 0) return;
-    setIsDeleteDialogOpen(true);
+    setPendingDeleteAction("selected");
+    // Use setTimeout to ensure the context menu is fully closed before opening the dialog
+    setTimeout(() => {
+      setIsDeleteDialogOpen(true);
+    }, 100);
+  };
+
+  // Open delete confirmation dialog for a single row
+  const openRowDeleteDialog = (rowKey: string) => {
+    setRowToDelete(rowKey);
+    setPendingDeleteAction("row");
+    // Use setTimeout to ensure the context menu is fully closed before opening the dialog
+    setTimeout(() => {
+      setIsDeleteDialogOpen(true);
+    }, 100);
   };
 
   // Handle delete selected rows
@@ -113,7 +140,7 @@ export default function TablePage() {
       if (result.success) {
         setDeleteMessage({
           text: `Successfully deleted ${result.deletedCount} row(s)`,
-          type: 'success'
+          type: "success",
         });
         // Clear selection
         setSelectedRows([]);
@@ -121,14 +148,14 @@ export default function TablePage() {
         loadTableData();
       } else {
         setDeleteMessage({
-          text: result.message || 'Failed to delete rows',
-          type: 'error'
+          text: result.message || "Failed to delete rows",
+          type: "error",
         });
       }
     } catch (error) {
       setDeleteMessage({
         text: `Error: ${error}`,
-        type: 'error'
+        type: "error",
       });
     } finally {
       setIsDeleting(false);
@@ -136,34 +163,70 @@ export default function TablePage() {
     }
   };
 
-  // Function to load table data
-  const loadTableData = useCallback(async (isRefresh = false) => {
-    if (!tableName) return;
+  // Handle single row deletion
+  const handleDeleteSingleRow = async () => {
+    if (!rowToDelete) return;
 
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
+    setIsDeleting(true);
     try {
-      const result = await fetchTableData(tableName, page, pageSize);
+      const result = await deleteRows(tableName, [rowToDelete]);
 
-      if (result.error) {
-        setError(result.error);
+      if (result.success) {
+        setDeleteMessage({
+          text: "Successfully deleted row",
+          type: "success",
+        });
+        // Reload the data
+        loadTableData();
       } else {
-        setData(result.data.records);
-        setColumns(result.columns);
-        setPagination(result.data.pagination);
-        setError(null);
+        setDeleteMessage({
+          text: result.message || "Failed to delete row",
+          type: "error",
+        });
       }
-    } catch (err) {
-      setError(`Failed to load table data: ${err}`);
+    } catch (error) {
+      setDeleteMessage({
+        text: `Error: ${error}`,
+        type: "error",
+      });
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setRowToDelete(null);
     }
-  }, [tableName, page, pageSize]);
+  };
+
+  // Function to load table data
+  const loadTableData = useCallback(
+    async (isRefresh = false) => {
+      if (!tableName) return;
+
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const result = await fetchTableData(tableName, page, pageSize);
+
+        if (result.error) {
+          setError(result.error);
+        } else {
+          setData(result.data.records);
+          setColumns(result.columns);
+          setPagination(result.data.pagination);
+          setError(null);
+        }
+      } catch (err) {
+        setError(`Failed to load table data: ${err}`);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [tableName, page, pageSize],
+  );
 
   // Function to handle manual refresh
   const handleRefresh = () => {
@@ -189,19 +252,22 @@ export default function TablePage() {
         >
           1
         </PaginationLink>
-      </PaginationItem>
+      </PaginationItem>,
     );
 
     // Calculate range of pages to show
     const startPage = Math.max(2, page - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(pagination.pageCount - 1, startPage + maxVisiblePages - 2);
+    const endPage = Math.min(
+      pagination.pageCount - 1,
+      startPage + maxVisiblePages - 2,
+    );
 
     // Adjust if we're near the beginning
     if (startPage > 2) {
       items.push(
         <PaginationItem key="ellipsis-start">
           <PaginationEllipsis />
-        </PaginationItem>
+        </PaginationItem>,
       );
     }
 
@@ -215,7 +281,7 @@ export default function TablePage() {
           >
             {i}
           </PaginationLink>
-        </PaginationItem>
+        </PaginationItem>,
       );
     }
 
@@ -224,7 +290,7 @@ export default function TablePage() {
       items.push(
         <PaginationItem key="ellipsis-end">
           <PaginationEllipsis />
-        </PaginationItem>
+        </PaginationItem>,
       );
     }
 
@@ -238,7 +304,7 @@ export default function TablePage() {
           >
             {pagination.pageCount}
           </PaginationLink>
-        </PaginationItem>
+        </PaginationItem>,
       );
     }
 
@@ -265,8 +331,10 @@ export default function TablePage() {
             disabled={refreshing || loading}
             className="flex items-center gap-1"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
         <p>No records found in this table.</p>
@@ -279,7 +347,9 @@ export default function TablePage() {
       <h1 className="text-2xl font-bold mb-4">Table: {tableName}</h1>
 
       {deleteMessage && (
-        <div className={`mb-4 p-2 rounded ${deleteMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div
+          className={`mb-4 p-2 rounded ${deleteMessage.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+        >
           {deleteMessage.text}
         </div>
       )}
@@ -291,26 +361,44 @@ export default function TablePage() {
           className="bg-red-600 hover:bg-red-700 text-white"
           size="sm"
         >
-          {isDeleting ? 'Deleting...' : `Delete Selected (${selectedRows.length})`}
+          {isDeleting
+            ? "Deleting..."
+            : `Delete Selected (${selectedRows.length})`}
         </Button>
       </div>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action will delete {selectedRows.length} selected row(s) from the {tableName} table.
+              {rowToDelete ? (
+                <>
+                  This action will delete the selected row from the {tableName}{" "}
+                  table.
+                </>
+              ) : (
+                <>
+                  This action will delete {selectedRows.length} selected row(s)
+                  from the {tableName} table.
+                </>
+              )}
+              <br />
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteSelected}
+              onClick={
+                rowToDelete ? handleDeleteSingleRow : handleDeleteSelected
+              }
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              Delete
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -326,7 +414,9 @@ export default function TablePage() {
               <TableHead className="w-[50px]">
                 <input
                   type="checkbox"
-                  checked={data.length > 0 && selectedRows.length === data.length}
+                  checked={
+                    data.length > 0 && selectedRows.length === data.length
+                  }
                   onChange={handleSelectAll}
                   className="h-4 w-4"
                 />
@@ -341,27 +431,49 @@ export default function TablePage() {
           <TableBody>
             {data.map((row, rowIndex) => {
               // Create a unique key from row data if possible, fallback to index if needed
-              const rowKey = String(row.id || row.ID || row.uuid || row.UUID || `row-${rowIndex}`);
+              const rowKey = String(
+                row.id || row.ID || row.uuid || row.UUID || `row-${rowIndex}`,
+              );
               const isSelected = selectedRows.includes(rowKey);
 
               return (
-                <TableRow key={rowKey} className={isSelected ? "bg-zinc-100 dark:bg-zinc-800" : ""}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleCheckboxChange(rowKey)}
-                      className="h-4 w-4"
-                    />
-                  </TableCell>
-                  {columns.map((column) => (
-                    <TableCell key={`${rowIndex}-${column.column_name}`}>
-                      {row[column.column_name as keyof typeof row] !== null
-                        ? String(row[column.column_name as keyof typeof row])
-                        : <span className="text-gray-400">NULL</span>}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <ContextMenu key={rowKey}>
+                  <ContextMenuTrigger>
+                    <TableRow
+                      className={
+                        isSelected ? "bg-zinc-100 dark:bg-zinc-800" : ""
+                      }
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleCheckboxChange(rowKey)}
+                          className="h-4 w-4"
+                        />
+                      </TableCell>
+                      {columns.map((column) => (
+                        <TableCell key={`${rowIndex}-${column.column_name}`}>
+                          {row[column.column_name as keyof typeof row] !==
+                          null ? (
+                            String(row[column.column_name as keyof typeof row])
+                          ) : (
+                            <span className="text-gray-400">NULL</span>
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem
+                      variant="destructive"
+                      onClick={() => openRowDeleteDialog(rowKey)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Row
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               );
             })}
           </TableBody>
@@ -386,7 +498,11 @@ export default function TablePage() {
                 <PaginationNext
                   href={`/tables/${tableName}?page=${Math.min(pagination.pageCount, page + 1)}&pageSize=${pageSize}`}
                   aria-disabled={page === pagination.pageCount}
-                  className={page === pagination.pageCount ? "pointer-events-none opacity-50" : ""}
+                  className={
+                    page === pagination.pageCount
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
                 />
               </PaginationItem>
             </PaginationContent>
