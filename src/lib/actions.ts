@@ -6,6 +6,8 @@ import {
   getTableColumns,
   getTableData,
   getTables,
+  insertTableRow,
+  updateTableCell as dbUpdateTableCell,
 } from "./db";
 
 /**
@@ -52,6 +54,27 @@ export async function fetchTableData(
 }
 
 /**
+ * Server action to update a cell value in a table
+ */
+export async function updateTableCell(tableName: string, rowId: string, columnName: string, value: unknown) {
+  try {
+    const result = await dbUpdateTableCell(tableName, rowId, columnName, value);
+    return {
+      success: result.success,
+      message: result.message,
+      error: null
+    };
+  } catch (error) {
+    console.error(`Error updating cell in table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to update cell in table ${tableName}`,
+      error: String(error)
+    };
+  }
+}
+
+/**
  * Server action to delete rows from a table
  */
 export async function deleteRows(tableName: string, ids: string[]) {
@@ -91,6 +114,29 @@ export async function deleteTableAction(tableName: string) {
       success: false,
       message: `Failed to delete table ${tableName}`,
       error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to add a new row to a table
+ */
+export async function addTableRow(tableName: string, data: Record<string, unknown>) {
+  try {
+    const result = await insertTableRow(tableName, data);
+    return {
+      success: result.success,
+      message: result.message,
+      record: result.record,
+      error: null
+    };
+  } catch (error) {
+    console.error(`Error adding row to table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to add row to table ${tableName}`,
+      record: null,
+      error: String(error)
     };
   }
 }

@@ -310,3 +310,172 @@ export async function deleteTable(tableName: string) {
     };
   }
 }
+
+/**
+ * Inserts a new row into a table
+ * @param tableName The name of the table
+ * @param data Object containing column names and values for the new row
+ * @returns Object containing success status and message
+ */
+export async function insertTableRow(tableName: string, data: Record<string, unknown>) {
+  try {
+    // First, verify the table exists
+    const tableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+      ) AS exists;
+    `;
+
+    if (!tableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${tableName}' does not exist`
+      };
+    }
+
+    // Get the column names for the table
+    const columns = await db`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      AND table_name = ${tableName};
+    `;
+
+    // Filter out columns that aren't in the provided data
+    const columnNames = Object.keys(data);
+    const validColumns = columns.filter(col => columnNames.includes(col.column_name));
+
+    if (validColumns.length === 0) {
+      return {
+        success: false,
+        message: `No valid columns provided for table '${tableName}'`
+      };
+    }
+
+    // Prepare column names and values for the INSERT query
+    const insertColumns = validColumns.map(col => col.column_name);
+    const insertValues = validColumns.map(col => data[col.column_name]);
+
+    // Execute the insert operation
+    console.log(`Inserting into table ${tableName}:`, data);
+
+    // Create an object with column names as keys and values as values
+    const insertData: Record<string, unknown> = {};
+    validColumns.forEach(col => {
+      insertData[col.column_name] = data[col.column_name];
+    });
+
+    // Use the SQL library's object insertion feature
+    const result = await db`
+      INSERT INTO ${db(tableName)} ${db(insertData)}
+      RETURNING *;
+    `;
+
+    return {
+      success: true,
+      message: `Successfully added new record`,
+      record: result[0]
+    };
+  } catch (error) {
+    console.error(`Error inserting row into table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to insert row: ${error}`
+    };
+  }
+}
+
+/**
+ * Updates a cell value in a table
+ * @param tableName The name of the table
+ * @param rowId The ID of the row to update
+ * @param columnName The name of the column to update
+ * @param value The new value for the cell
+ * @returns Object containing success status and message
+ */
+export async function updateTableCell(tableName: string, rowId: string, columnName: string, value: unknown) {
+  try {
+    // First, verify the table exists
+    const tableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+      ) AS exists;
+    `;
+
+    if (!tableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${tableName}' does not exist`
+      };
+    }
+
+    // Determine the primary key column
+    const primaryKeyResult = await db`
+      SELECT a.attname as column_name
+      FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+      WHERE i.indrelid = ${tableName}::regclass
+      AND i.indisprimary;
+    `;
+
+    // If no primary key is found, try common ID column names
+    let primaryKeyColumn: string;
+    if (primaryKeyResult.length > 0) {
+      primaryKeyColumn = primaryKeyResult[0].column_name;
+      console.log(`Found primary key column: ${primaryKeyColumn}`);
+    } else {
+      // Try common ID column names
+      const columnResult = await db`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName};
+      `;
+
+      const columnNames = columnResult.map((col: { column_name: string }) => col.column_name);
+      const commonIdColumns = ['id', 'ID', 'uuid', 'UUID'];
+      const foundColumn = commonIdColumns.find(col => columnNames.includes(col));
+
+      if (!foundColumn) {
+        return {
+          success: false,
+          message: `Could not determine primary key column for table '${tableName}'`
+        };
+      }
+      primaryKeyColumn = foundColumn;
+    }
+
+    // Execute the update operation
+    console.log(`Updating table ${tableName} where ${primaryKeyColumn} = ${rowId}, setting ${columnName} = ${value}`);
+
+    // Handle null values
+    if (value === null || value === '') {
+      await db`
+        UPDATE ${db(tableName)}
+        SET ${db(columnName)} = NULL
+        WHERE ${db(primaryKeyColumn)} = ${rowId}
+      `;
+    } else {
+      await db`
+        UPDATE ${db(tableName)}
+        SET ${db(columnName)} = ${value}
+        WHERE ${db(primaryKeyColumn)} = ${rowId}
+      `;
+    }
+
+    return {
+      success: true,
+      message: `Successfully updated cell`
+    };
+  } catch (error) {
+    console.error(`Error updating cell in table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to update cell: ${error}`
+    };
+  }
+}
