@@ -2,7 +2,7 @@
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Database, RefreshCw, Table, Trash2 } from "lucide-react";
+import { ChevronDown, Database, Plus, RefreshCw, Table, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -32,9 +32,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { deleteTableAction, fetchDatabaseTables } from "@/lib/actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createDatabaseSchema, deleteTableAction, fetchDatabaseSchemas, fetchDatabaseTables } from "@/lib/actions";
 
 export function AppSidebar() {
+  const [schemas, setSchemas] = useState<string[]>(['public']);
+  const [selectedSchema, setSelectedSchema] = useState<string>('public');
   const [tables, setTables] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,11 +55,32 @@ export function AppSidebar() {
     error: string | null;
   }>({ loading: false, error: null });
 
+  // State for creating a new schema
+  const [isCreateSchemaDialogOpen, setIsCreateSchemaDialogOpen] = useState(false);
+  const [newSchemaName, setNewSchemaName] = useState('');
+  const [isCreatingSchema, setIsCreatingSchema] = useState(false);
+  const [createSchemaError, setCreateSchemaError] = useState<string | null>(null);
+
+  // Function to load schemas
+  const loadSchemas = useCallback(async () => {
+    try {
+      const result = await fetchDatabaseSchemas();
+
+      if (result.error) {
+        console.error(result.error);
+      } else {
+        setSchemas(result.schemas);
+      }
+    } catch (err) {
+      console.error("Failed to fetch database schemas:", err);
+    }
+  }, []);
+
   // Function to load tables
-  const loadTables = useCallback(async () => {
+  const loadTables = useCallback(async (schema = selectedSchema) => {
     try {
       setRefreshing(true);
-      const result = await fetchDatabaseTables();
+      const result = await fetchDatabaseTables(schema);
 
       if (result.error) {
         setError(result.error);
@@ -59,18 +89,62 @@ export function AppSidebar() {
         setError(null);
       }
     } catch (err) {
-      console.error("Failed to fetch database tables:", err);
-      setError("Failed to load database tables");
+      console.error(`Failed to fetch database tables from schema ${schema}:`, err);
+      setError(`Failed to load database tables from schema ${schema}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedSchema]);
 
-  // Load tables on initial render only
+  // Handle schema change
+  const handleSchemaChange = (schema: string) => {
+    if (schema === 'create_new') {
+      setIsCreateSchemaDialogOpen(true);
+    } else {
+      setSelectedSchema(schema);
+      setLoading(true);
+      loadTables(schema);
+    }
+  };
+
+  // Handle creating a new schema
+  const handleCreateSchema = async () => {
+    if (!newSchemaName.trim()) {
+      setCreateSchemaError('Schema name cannot be empty');
+      return;
+    }
+
+    setIsCreatingSchema(true);
+    setCreateSchemaError(null);
+
+    try {
+      const result = await createDatabaseSchema(newSchemaName);
+
+      if (result.success) {
+        // Refresh schemas list
+        await loadSchemas();
+        // Select the newly created schema
+        setSelectedSchema(newSchemaName);
+        loadTables(newSchemaName);
+        // Close the dialog
+        setIsCreateSchemaDialogOpen(false);
+        setNewSchemaName('');
+      } else {
+        setCreateSchemaError(result.message || 'Failed to create schema');
+      }
+    } catch (error) {
+      setCreateSchemaError(`Error creating schema: ${error}`);
+    } finally {
+      setIsCreatingSchema(false);
+    }
+  };
+
+  // Load schemas and tables on initial render
   useEffect(() => {
+    loadSchemas();
     loadTables();
-  }, [loadTables]);
+  }, [loadSchemas, loadTables]);
 
   // Function to handle table deletion
   const handleDeleteTable = async () => {
@@ -93,16 +167,17 @@ export function AppSidebar() {
     <>
       <Sidebar>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center justify-between">
+          {/* Header and Schema Selector */}
+          <div className="px-3 py-2 mb-4">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Database className="mr-2 h-4 w-4" />
-                Database Tables
+                <span className="font-medium">Database Tables</span>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={loadTables}
+                onClick={() => loadTables(selectedSchema)}
                 disabled={refreshing}
                 className="h-6 w-6"
                 title="Refresh tables list"
@@ -111,7 +186,31 @@ export function AppSidebar() {
                   className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 />
               </Button>
-            </SidebarGroupLabel>
+            </div>
+
+            {/* Schema Selector */}
+            <Select value={selectedSchema} onValueChange={handleSchemaChange}>
+              <SelectTrigger className="w-full h-8 text-xs">
+                <SelectValue placeholder="Select schema" />
+              </SelectTrigger>
+              <SelectContent>
+                {schemas.map((schema) => (
+                  <SelectItem key={schema} value={schema}>
+                    {schema}
+                  </SelectItem>
+                ))}
+                <SelectItem key="create_new" value="create_new" className="text-green-600 font-medium">
+                  <div className="flex items-center">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create New Schema
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tables List */}
+          <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
                 {loading ? (
@@ -198,6 +297,46 @@ export function AppSidebar() {
               disabled={deleteStatus.loading}
             >
               {deleteStatus.loading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Schema Dialog */}
+      <AlertDialog
+        open={isCreateSchemaDialogOpen}
+        onOpenChange={setIsCreateSchemaDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create New Schema</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a name for the new schema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <input
+              type="text"
+              value={newSchemaName}
+              onChange={(e) => setNewSchemaName(e.target.value)}
+              placeholder="Schema name"
+              className="w-full px-3 py-2 border rounded-md"
+              disabled={isCreatingSchema}
+            />
+            {createSchemaError && (
+              <p className="text-red-500 text-sm mt-2">{createSchemaError}</p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCreatingSchema}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCreateSchema}
+              disabled={isCreatingSchema}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isCreatingSchema ? "Creating..." : "Create Schema"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,8 +1,10 @@
 "use server";
 
 import {
+  createSchema,
   deleteTable,
   deleteTableRows,
+  getSchemas,
   getTableColumns,
   getTableData,
   getTables,
@@ -11,15 +13,49 @@ import {
 } from "./db";
 
 /**
- * Server action to fetch all database tables
+ * Server action to fetch all database schemas
  */
-export async function fetchDatabaseTables() {
+export async function fetchDatabaseSchemas() {
   try {
-    const tables = await getTables();
+    const schemas = await getSchemas();
+    return { schemas, error: null };
+  } catch (error) {
+    console.error("Error fetching database schemas:", error);
+    return { schemas: ['public'], error: "Failed to fetch database schemas" };
+  }
+}
+
+/**
+ * Server action to create a new database schema
+ */
+export async function createDatabaseSchema(schemaName: string) {
+  try {
+    const result = await createSchema(schemaName);
+    return {
+      success: result.success,
+      message: result.message,
+      error: null
+    };
+  } catch (error) {
+    console.error(`Error creating schema ${schemaName}:`, error);
+    return {
+      success: false,
+      message: `Failed to create schema ${schemaName}`,
+      error: String(error)
+    };
+  }
+}
+
+/**
+ * Server action to fetch all database tables from a specific schema
+ */
+export async function fetchDatabaseTables(schema = 'public') {
+  try {
+    const tables = await getTables(schema);
     return { tables, error: null };
   } catch (error) {
-    console.error("Error fetching database tables:", error);
-    return { tables: [], error: "Failed to fetch database tables" };
+    console.error(`Error fetching database tables from schema ${schema}:`, error);
+    return { tables: [], error: `Failed to fetch database tables from schema ${schema}` };
   }
 }
 

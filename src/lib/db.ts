@@ -65,24 +65,86 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 /**
- * Fetches all table names from the current database
+ * Creates a new schema in the database
+ * @param schemaName The name of the schema to create
+ * @returns Object containing success status and message
+ */
+export async function createSchema(schemaName: string) {
+  try {
+    // Check if schema already exists
+    const schemaExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.schemata
+        WHERE schema_name = ${schemaName}
+      ) AS exists;
+    `;
+
+    if (schemaExists[0].exists) {
+      return {
+        success: false,
+        message: `Schema '${schemaName}' already exists`
+      };
+    }
+
+    // Create the schema
+    await db`CREATE SCHEMA ${db(schemaName)};`;
+
+    return {
+      success: true,
+      message: `Successfully created schema '${schemaName}'`
+    };
+  } catch (error) {
+    console.error(`Error creating schema ${schemaName}:`, error);
+    return {
+      success: false,
+      message: `Failed to create schema: ${error}`
+    };
+  }
+}
+
+/**
+ * Fetches all available schemas in the database
+ * @returns Array of schema names
+ */
+export async function getSchemas() {
+  try {
+    // Query the PostgreSQL information_schema to get all schemas
+    // Filtering out system schemas
+    const result = await db`
+      SELECT schema_name
+      FROM information_schema.schemata
+      WHERE schema_name NOT LIKE 'pg_%'
+      AND schema_name != 'information_schema'
+      ORDER BY schema_name;
+    `;
+
+    // Extract schema names from the result
+    return result.map((row: { schema_name: string }) => row.schema_name);
+  } catch (error) {
+    console.error("Error fetching database schemas:", error);
+    return ['public']; // Default to public schema if there's an error
+  }
+}
+
+/**
+ * Fetches all table names from the specified schema
+ * @param schema The database schema to fetch tables from
  * @returns Array of table names
  */
-export async function getTables() {
+export async function getTables(schema = 'public') {
   try {
-    // Query the PostgreSQL information_schema to get all tables in the current database
-    // Filtering out system tables (pg_* and information_schema)
+    // Query the PostgreSQL information_schema to get all tables in the specified schema
     const result = await db`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public'
+      WHERE table_schema = ${schema}
       ORDER BY table_name;
     `;
 
     // Extract table names from the result
     return result.map((row: { table_name: string }) => row.table_name);
   } catch (error) {
-    console.error("Error fetching database tables:", error);
+    console.error(`Error fetching tables from schema ${schema}:`, error);
     return [];
   }
 }
