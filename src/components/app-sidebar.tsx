@@ -65,7 +65,7 @@ export function AppSidebar() {
   const [newSchemaName, setNewSchemaName] = useState('');
   const [isCreatingSchema, setIsCreatingSchema] = useState(false);
   const [createSchemaError, setCreateSchemaError] = useState<string | null>(null);
-  const params = useParams<{ name: string }>()
+  const params = useParams<{ table: string }>();
 
   // Function to load schemas
   const loadSchemas = useCallback(async () => {
@@ -179,7 +179,7 @@ export function AppSidebar() {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupContent className="flex justify-center gap-2">
+            <SidebarGroupContent className="flex justify-center gap-3">
               <ThemeToggle />
               <Button
                 variant="outline"
@@ -232,7 +232,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {tables.map((tableName) => (
                     <SidebarMenuItem key={tableName}>
-                      <SidebarMenuButton asChild isActive={params.name === tableName}>
+                      <SidebarMenuButton asChild isActive={params.table === tableName}>
                         <Link href={`/tables/${tableName}`}>
                           <Table className="h-4 w-4" />
                           <span>{tableName}</span>

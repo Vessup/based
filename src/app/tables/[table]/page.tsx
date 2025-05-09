@@ -25,12 +25,14 @@ import { format, isValid, parseISO } from "date-fns";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DataGrid, Column, SelectColumn, textEditor } from "react-data-grid";
+import { DataGrid, type Column, SelectColumn, textEditor } from "react-data-grid";
 import { toast, Toaster } from "sonner";
 import "react-data-grid/lib/styles.css";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import Link from "next/link";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import clsx from "clsx";
+import { useTheme } from "next-themes";
 
 // Define types for our data
 type ColumnInfo = {
@@ -88,11 +90,12 @@ function DateFormatter({ value }: { value: unknown }) {
 
 export default function TablePage() {
   // Get route params and search params
-  const params = useParams();
+  const params = useParams<{ table: string }>();
   const searchParams = useSearchParams();
-  const tableName = params.name as string;
+  const tableName = params.table as string;
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "10");
+  const { theme } = useTheme();
 
   // State for data
   const [loading, setLoading] = useState(true);
@@ -385,7 +388,7 @@ export default function TablePage() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center p-2.5 mt-0.25">
+      <div className="flex items-center p-3 pl-2.5">
         <div>
           <SidebarTrigger />
         </div>
@@ -406,8 +409,19 @@ export default function TablePage() {
         </div>
       </div>
 
-      <div className="p-4.5">
-        <div className="mb-4 flex gap-2">
+      <div className="px-4 mt-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
+
           <Button
             onClick={() => setIsAddDialogOpen(true)}
             size="sm"
@@ -429,19 +443,23 @@ export default function TablePage() {
                 : `Delete Selected (${selectedRows.size})`}
             </Button>
           )}
+        </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1 ml-auto"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </Button>
+        <div className="mt-4">
+          <DataGrid
+            columns={gridColumns}
+            rows={data}
+            rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
+            selectedRows={selectedRows}
+            onSelectedRowsChange={handleRowSelectionChange}
+            onRowsChange={handleCellChange}
+            // renderCheckbox={props => Checkbox} TODO: add checkbox component
+            className={clsx(theme === "light" && "rdg-light", "rounded-lg")}
+          />
+        </div>
+
+        <div className="mt-4 text-sm text-muted-foreground">
+          Showing {data.length} of {pagination.total} records
         </div>
       </div>
 
@@ -455,8 +473,6 @@ export default function TablePage() {
         tableName={tableName}
         onAddRecord={handleAddRecord}
       />
-
-
 
       <AlertDialog
         open={isDeleteDialogOpen}
@@ -486,22 +502,6 @@ export default function TablePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <div className="rounded-md border">
-        <DataGrid
-          columns={gridColumns}
-          rows={data}
-          rowKeyGetter={(row: Record<string, unknown>) => String(row.id || row.ID || row.uuid || row.UUID)}
-          selectedRows={selectedRows}
-          onSelectedRowsChange={handleRowSelectionChange}
-          onRowsChange={handleCellChange}
-          className="rdg-light h-[500px]"
-        />
-      </div>
-
-      <div className="mt-4 text-sm text-gray-500">
-        Showing {data.length} of {pagination.total} records
-      </div>
     </div>
   );
 }
