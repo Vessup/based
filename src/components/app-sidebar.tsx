@@ -2,7 +2,15 @@
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Database, MoreHorizontal, Plus, RefreshCw, Table, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Database,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Table,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -23,18 +31,11 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarGroupAction,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuAction,
-} from "@/components/ui/sidebar";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -42,13 +43,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createDatabaseSchema, deleteTableAction, fetchDatabaseSchemas, fetchDatabaseTables } from "@/lib/actions";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import {
+  createDatabaseSchema,
+  deleteTableAction,
+  fetchDatabaseSchemas,
+  fetchDatabaseTables,
+} from "@/lib/actions";
 import { useParams } from "next/navigation";
 
 export function AppSidebar() {
-  const [schemas, setSchemas] = useState<string[]>(['public']);
-  const [selectedSchema, setSelectedSchema] = useState<string>('public');
+  const [schemas, setSchemas] = useState<string[]>(["public"]);
+  const [selectedSchema, setSelectedSchema] = useState<string>("public");
   const [tables, setTables] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +79,13 @@ export function AppSidebar() {
   }>({ loading: false, error: null });
 
   // State for creating a new schema
-  const [isCreateSchemaDialogOpen, setIsCreateSchemaDialogOpen] = useState(false);
-  const [newSchemaName, setNewSchemaName] = useState('');
+  const [isCreateSchemaDialogOpen, setIsCreateSchemaDialogOpen] =
+    useState(false);
+  const [newSchemaName, setNewSchemaName] = useState("");
   const [isCreatingSchema, setIsCreatingSchema] = useState(false);
-  const [createSchemaError, setCreateSchemaError] = useState<string | null>(null);
+  const [createSchemaError, setCreateSchemaError] = useState<string | null>(
+    null,
+  );
   const params = useParams<{ table: string }>();
 
   // Function to load schemas
@@ -83,29 +104,35 @@ export function AppSidebar() {
   }, []);
 
   // Function to load tables
-  const loadTables = useCallback(async (schema = selectedSchema) => {
-    try {
-      setRefreshing(true);
-      const result = await fetchDatabaseTables(schema);
+  const loadTables = useCallback(
+    async (schema = selectedSchema) => {
+      try {
+        setRefreshing(true);
+        const result = await fetchDatabaseTables(schema);
 
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setTables(result.tables);
-        setError(null);
+        if (result.error) {
+          setError(result.error);
+        } else {
+          setTables(result.tables);
+          setError(null);
+        }
+      } catch (err) {
+        console.error(
+          `Failed to fetch database tables from schema ${schema}:`,
+          err,
+        );
+        setError(`Failed to load database tables from schema ${schema}`);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      console.error(`Failed to fetch database tables from schema ${schema}:`, err);
-      setError(`Failed to load database tables from schema ${schema}`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [selectedSchema]);
+    },
+    [selectedSchema],
+  );
 
   // Handle schema change
   const handleSchemaChange = (schema: string) => {
-    if (schema === 'create_new') {
+    if (schema === "create_new") {
       setIsCreateSchemaDialogOpen(true);
     } else {
       setSelectedSchema(schema);
@@ -117,7 +144,7 @@ export function AppSidebar() {
   // Handle creating a new schema
   const handleCreateSchema = async () => {
     if (!newSchemaName.trim()) {
-      setCreateSchemaError('Schema name cannot be empty');
+      setCreateSchemaError("Schema name cannot be empty");
       return;
     }
 
@@ -135,9 +162,9 @@ export function AppSidebar() {
         loadTables(newSchemaName);
         // Close the dialog
         setIsCreateSchemaDialogOpen(false);
-        setNewSchemaName('');
+        setNewSchemaName("");
       } else {
-        setCreateSchemaError(result.message || 'Failed to create schema');
+        setCreateSchemaError(result.message || "Failed to create schema");
       }
     } catch (error) {
       setCreateSchemaError(`Error creating schema: ${error}`);
@@ -211,11 +238,16 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      {schemas.filter(s => s !== selectedSchema).map((schema) => (
-                        <DropdownMenuItem key={schema} onClick={() => handleSchemaChange(schema)}>
-                          <span>{schema}</span>
-                        </DropdownMenuItem>
-                      ))}
+                      {schemas
+                        .filter((s) => s !== selectedSchema)
+                        .map((schema) => (
+                          <DropdownMenuItem
+                            key={schema}
+                            onClick={() => handleSchemaChange(schema)}
+                          >
+                            <span>{schema}</span>
+                          </DropdownMenuItem>
+                        ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </SidebarMenuItem>
@@ -231,33 +263,38 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {tables.map((tableName) => (
-                    <SidebarMenuItem key={tableName}>
-                      <SidebarMenuButton asChild isActive={params.table === tableName}>
-                        <Link href={`/tables/${tableName}`}>
-                          <Table className="h-4 w-4" />
-                          <span>{tableName}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <SidebarMenuAction className="mr-0.5">
-                            <MoreHorizontal />
-                          </SidebarMenuAction>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="right" align="start">
-                          <DropdownMenuItem onClick={() => {
-                              setTableToDelete(tableName);
-                              // Use setTimeout to ensure the context menu is fully closed before opening the dialog
-                              setTimeout(() => {
-                                setIsDeleteDialogOpen(true);
-                              }, 100);
-                            }}>
-                            <span>Drop table</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </SidebarMenuItem>
-                  ))}
+                  <SidebarMenuItem key={tableName}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={params.table === tableName}
+                    >
+                      <Link href={`/tables/${tableName}`}>
+                        <Table className="h-4 w-4" />
+                        <span>{tableName}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuAction className="mr-0.5">
+                          <MoreHorizontal />
+                        </SidebarMenuAction>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="right" align="start">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setTableToDelete(tableName);
+                            // Use setTimeout to ensure the context menu is fully closed before opening the dialog
+                            setTimeout(() => {
+                              setIsDeleteDialogOpen(true);
+                            }, 100);
+                          }}
+                        >
+                          <span>Drop table</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -321,7 +358,9 @@ export function AppSidebar() {
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCreatingSchema}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isCreatingSchema}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreateSchema}
               disabled={isCreatingSchema}

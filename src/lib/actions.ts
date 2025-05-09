@@ -2,6 +2,7 @@
 
 import {
   createSchema,
+  updateTableCell as dbUpdateTableCell,
   deleteTable,
   deleteTableRows,
   getSchemas,
@@ -9,7 +10,6 @@ import {
   getTableData,
   getTables,
   insertTableRow,
-  updateTableCell as dbUpdateTableCell,
 } from "./db";
 
 /**
@@ -21,7 +21,7 @@ export async function fetchDatabaseSchemas() {
     return { schemas, error: null };
   } catch (error) {
     console.error("Error fetching database schemas:", error);
-    return { schemas: ['public'], error: "Failed to fetch database schemas" };
+    return { schemas: ["public"], error: "Failed to fetch database schemas" };
   }
 }
 
@@ -34,14 +34,14 @@ export async function createDatabaseSchema(schemaName: string) {
     return {
       success: result.success,
       message: result.message,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error(`Error creating schema ${schemaName}:`, error);
     return {
       success: false,
       message: `Failed to create schema ${schemaName}`,
-      error: String(error)
+      error: String(error),
     };
   }
 }
@@ -49,13 +49,19 @@ export async function createDatabaseSchema(schemaName: string) {
 /**
  * Server action to fetch all database tables from a specific schema
  */
-export async function fetchDatabaseTables(schema = 'public') {
+export async function fetchDatabaseTables(schema = "public") {
   try {
     const tables = await getTables(schema);
     return { tables, error: null };
   } catch (error) {
-    console.error(`Error fetching database tables from schema ${schema}:`, error);
-    return { tables: [], error: `Failed to fetch database tables from schema ${schema}` };
+    console.error(
+      `Error fetching database tables from schema ${schema}:`,
+      error,
+    );
+    return {
+      tables: [],
+      error: `Failed to fetch database tables from schema ${schema}`,
+    };
   }
 }
 
@@ -92,20 +98,25 @@ export async function fetchTableData(
 /**
  * Server action to update a cell value in a table
  */
-export async function updateTableCell(tableName: string, rowId: string, columnName: string, value: unknown) {
+export async function updateTableCell(
+  tableName: string,
+  rowId: string,
+  columnName: string,
+  value: unknown,
+) {
   try {
     const result = await dbUpdateTableCell(tableName, rowId, columnName, value);
     return {
       success: result.success,
       message: result.message,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error(`Error updating cell in table ${tableName}:`, error);
     return {
       success: false,
       message: `Failed to update cell in table ${tableName}`,
-      error: String(error)
+      error: String(error),
     };
   }
 }
@@ -157,14 +168,17 @@ export async function deleteTableAction(tableName: string) {
 /**
  * Server action to add a new row to a table
  */
-export async function addTableRow(tableName: string, data: Record<string, unknown>) {
+export async function addTableRow(
+  tableName: string,
+  data: Record<string, unknown>,
+) {
   try {
     const result = await insertTableRow(tableName, data);
     return {
       success: result.success,
       message: result.message,
       record: result.record,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error(`Error adding row to table ${tableName}:`, error);
@@ -172,7 +186,7 @@ export async function addTableRow(tableName: string, data: Record<string, unknow
       success: false,
       message: `Failed to add row to table ${tableName}`,
       record: null,
-      error: String(error)
+      error: String(error),
     };
   }
 }

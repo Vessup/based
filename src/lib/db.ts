@@ -82,7 +82,7 @@ export async function createSchema(schemaName: string) {
     if (schemaExists[0].exists) {
       return {
         success: false,
-        message: `Schema '${schemaName}' already exists`
+        message: `Schema '${schemaName}' already exists`,
       };
     }
 
@@ -91,13 +91,13 @@ export async function createSchema(schemaName: string) {
 
     return {
       success: true,
-      message: `Successfully created schema '${schemaName}'`
+      message: `Successfully created schema '${schemaName}'`,
     };
   } catch (error) {
     console.error(`Error creating schema ${schemaName}:`, error);
     return {
       success: false,
-      message: `Failed to create schema: ${error}`
+      message: `Failed to create schema: ${error}`,
     };
   }
 }
@@ -122,7 +122,7 @@ export async function getSchemas() {
     return result.map((row: { schema_name: string }) => row.schema_name);
   } catch (error) {
     console.error("Error fetching database schemas:", error);
-    return ['public']; // Default to public schema if there's an error
+    return ["public"]; // Default to public schema if there's an error
   }
 }
 
@@ -131,7 +131,7 @@ export async function getSchemas() {
  * @param schema The database schema to fetch tables from
  * @returns Array of table names
  */
-export async function getTables(schema = 'public') {
+export async function getTables(schema = "public") {
   try {
     // Query the PostgreSQL information_schema to get all tables in the specified schema
     const result = await db`
@@ -379,7 +379,10 @@ export async function deleteTable(tableName: string) {
  * @param data Object containing column names and values for the new row
  * @returns Object containing success status and message
  */
-export async function insertTableRow(tableName: string, data: Record<string, unknown>) {
+export async function insertTableRow(
+  tableName: string,
+  data: Record<string, unknown>,
+) {
   try {
     // First, verify the table exists
     const tableExists = await db`
@@ -393,7 +396,7 @@ export async function insertTableRow(tableName: string, data: Record<string, unk
     if (!tableExists[0].exists) {
       return {
         success: false,
-        message: `Table '${tableName}' does not exist`
+        message: `Table '${tableName}' does not exist`,
       };
     }
 
@@ -407,25 +410,27 @@ export async function insertTableRow(tableName: string, data: Record<string, unk
 
     // Filter out columns that aren't in the provided data
     const columnNames = Object.keys(data);
-    const validColumns = columns.filter(col => columnNames.includes(col.column_name));
+    const validColumns = columns.filter((col) =>
+      columnNames.includes(col.column_name),
+    );
 
     if (validColumns.length === 0) {
       return {
         success: false,
-        message: `No valid columns provided for table '${tableName}'`
+        message: `No valid columns provided for table '${tableName}'`,
       };
     }
 
     // Prepare column names and values for the INSERT query
-    const insertColumns = validColumns.map(col => col.column_name);
-    const insertValues = validColumns.map(col => data[col.column_name]);
+    const insertColumns = validColumns.map((col) => col.column_name);
+    const insertValues = validColumns.map((col) => data[col.column_name]);
 
     // Execute the insert operation
     console.log(`Inserting into table ${tableName}:`, data);
 
     // Create an object with column names as keys and values as values
     const insertData: Record<string, unknown> = {};
-    validColumns.forEach(col => {
+    validColumns.forEach((col) => {
       insertData[col.column_name] = data[col.column_name];
     });
 
@@ -438,13 +443,13 @@ export async function insertTableRow(tableName: string, data: Record<string, unk
     return {
       success: true,
       message: `Successfully added new record`,
-      record: result[0]
+      record: result[0],
     };
   } catch (error) {
     console.error(`Error inserting row into table ${tableName}:`, error);
     return {
       success: false,
-      message: `Failed to insert row: ${error}`
+      message: `Failed to insert row: ${error}`,
     };
   }
 }
@@ -457,7 +462,12 @@ export async function insertTableRow(tableName: string, data: Record<string, unk
  * @param value The new value for the cell
  * @returns Object containing success status and message
  */
-export async function updateTableCell(tableName: string, rowId: string, columnName: string, value: unknown) {
+export async function updateTableCell(
+  tableName: string,
+  rowId: string,
+  columnName: string,
+  value: unknown,
+) {
   try {
     // First, verify the table exists
     const tableExists = await db`
@@ -471,7 +481,7 @@ export async function updateTableCell(tableName: string, rowId: string, columnNa
     if (!tableExists[0].exists) {
       return {
         success: false,
-        message: `Table '${tableName}' does not exist`
+        message: `Table '${tableName}' does not exist`,
       };
     }
 
@@ -498,24 +508,30 @@ export async function updateTableCell(tableName: string, rowId: string, columnNa
         AND table_name = ${tableName};
       `;
 
-      const columnNames = columnResult.map((col: { column_name: string }) => col.column_name);
-      const commonIdColumns = ['id', 'ID', 'uuid', 'UUID'];
-      const foundColumn = commonIdColumns.find(col => columnNames.includes(col));
+      const columnNames = columnResult.map(
+        (col: { column_name: string }) => col.column_name,
+      );
+      const commonIdColumns = ["id", "ID", "uuid", "UUID"];
+      const foundColumn = commonIdColumns.find((col) =>
+        columnNames.includes(col),
+      );
 
       if (!foundColumn) {
         return {
           success: false,
-          message: `Could not determine primary key column for table '${tableName}'`
+          message: `Could not determine primary key column for table '${tableName}'`,
         };
       }
       primaryKeyColumn = foundColumn;
     }
 
     // Execute the update operation
-    console.log(`Updating table ${tableName} where ${primaryKeyColumn} = ${rowId}, setting ${columnName} = ${value}`);
+    console.log(
+      `Updating table ${tableName} where ${primaryKeyColumn} = ${rowId}, setting ${columnName} = ${value}`,
+    );
 
     // Handle null values
-    if (value === null || value === '') {
+    if (value === null || value === "") {
       await db`
         UPDATE ${db(tableName)}
         SET ${db(columnName)} = NULL
@@ -531,13 +547,13 @@ export async function updateTableCell(tableName: string, rowId: string, columnNa
 
     return {
       success: true,
-      message: `Successfully updated cell`
+      message: `Successfully updated cell`,
     };
   } catch (error) {
     console.error(`Error updating cell in table ${tableName}:`, error);
     return {
       success: false,
-      message: `Failed to update cell: ${error}`
+      message: `Failed to update cell: ${error}`,
     };
   }
 }

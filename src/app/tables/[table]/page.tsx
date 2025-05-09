@@ -20,19 +20,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { addTableRow, deleteRows, fetchTableData, updateTableCell } from "@/lib/actions";
+import {
+  addTableRow,
+  deleteRows,
+  fetchTableData,
+  updateTableCell,
+} from "@/lib/actions";
 import { format, isValid, parseISO } from "date-fns";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DataGrid, type Column, SelectColumn, textEditor } from "react-data-grid";
-import { toast, Toaster } from "sonner";
+import {
+  type Column,
+  DataGrid,
+  SelectColumn,
+  textEditor,
+} from "react-data-grid";
+import { Toaster, toast } from "sonner";
 import "react-data-grid/lib/styles.css";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import Link from "next/link";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import clsx from "clsx";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 
 // Define types for our data
 type ColumnInfo = {
@@ -57,7 +74,9 @@ interface EditorProps {
 }
 
 function DateEditor({ row, column, onRowChange, onClose }: EditorProps) {
-  const value = row[column.key] ? new Date(row[column.key] as string) : undefined;
+  const value = row[column.key]
+    ? new Date(row[column.key] as string)
+    : undefined;
 
   return (
     <DatePicker
@@ -75,10 +94,10 @@ function DateFormatter({ value }: { value: unknown }) {
   if (!value) return <span className="text-gray-400">NULL</span>;
 
   try {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const date = parseISO(value);
       if (isValid(date)) {
-        return format(date, 'PPP');
+        return format(date, "PPP");
       }
     }
   } catch (e) {
@@ -186,8 +205,10 @@ export default function TablePage() {
 
   // Determine if a column is a date type
   const isDateColumn = (dataType: string) => {
-    return dataType.toLowerCase().includes('date') ||
-           dataType.toLowerCase().includes('timestamp');
+    return (
+      dataType.toLowerCase().includes("date") ||
+      dataType.toLowerCase().includes("timestamp")
+    );
   };
 
   // Handle adding a new record
@@ -212,21 +233,30 @@ export default function TablePage() {
   };
 
   // Handle cell edit
-  const handleCellEdit = async (rowKey: string, columnName: string, value: unknown) => {
+  const handleCellEdit = async (
+    rowKey: string,
+    columnName: string,
+    value: unknown,
+  ) => {
     try {
-      const result = await updateTableCell(tableName, rowKey, columnName, value);
+      const result = await updateTableCell(
+        tableName,
+        rowKey,
+        columnName,
+        value,
+      );
 
       if (result.success) {
         toast.success("Cell updated successfully");
         // Update the local data to reflect the change
-        setData(prevData =>
-          prevData.map(row => {
+        setData((prevData) =>
+          prevData.map((row) => {
             const id = String(row.id || row.ID || row.uuid || row.UUID);
             if (id === rowKey) {
               return { ...row, [columnName]: value };
             }
             return row;
-          })
+          }),
         );
       } else {
         toast.error(result.message || "Failed to update cell");
@@ -258,15 +288,19 @@ export default function TablePage() {
           setError(result.error);
         } else {
           // Convert any Date objects to ISO strings to avoid React rendering issues
-          const processedData = result.data.records.map((record: Record<string, unknown>) => {
-            const processedRecord = { ...record };
-            for (const key in processedRecord) {
-              if (processedRecord[key] instanceof Date) {
-                processedRecord[key] = (processedRecord[key] as Date).toISOString();
+          const processedData = result.data.records.map(
+            (record: Record<string, unknown>) => {
+              const processedRecord = { ...record };
+              for (const key in processedRecord) {
+                if (processedRecord[key] instanceof Date) {
+                  processedRecord[key] = (
+                    processedRecord[key] as Date
+                  ).toISOString();
+                }
               }
-            }
-            return processedRecord;
-          });
+              return processedRecord;
+            },
+          );
 
           setData(processedData);
           setColumns(result.columns);
@@ -295,8 +329,10 @@ export default function TablePage() {
 
   // Function to determine if a column is a date type - defined inside the component to avoid recreating
   const checkIsDateColumn = useCallback((dataType: string) => {
-    return dataType.toLowerCase().includes('date') ||
-           dataType.toLowerCase().includes('timestamp');
+    return (
+      dataType.toLowerCase().includes("date") ||
+      dataType.toLowerCase().includes("timestamp")
+    );
   }, []);
 
   // Function to open delete dialog for a row - defined with useCallback to avoid recreating
@@ -321,7 +357,7 @@ export default function TablePage() {
         key: column.column_name,
         name: column.column_name,
         // editor: isDate ? DateEditor : textEditor,
-        width: 'max-content',
+        width: "max-content",
         resizable: true,
         formatter: isDate ? DateFormatter : undefined,
         editable: true,
@@ -338,7 +374,7 @@ export default function TablePage() {
   // Handle cell changes
   const handleCellChange = (
     newRows: Record<string, unknown>[],
-    { indexes, column }: { indexes: number[], column: { key: string } }
+    { indexes, column }: { indexes: number[]; column: { key: string } },
   ) => {
     const rowIndex = indexes[0];
     const row = newRows[rowIndex];
@@ -365,8 +401,8 @@ export default function TablePage() {
   };
 
   return (
-    <div className="w-full">
-      <div className="flex items-center p-3 pl-2.5">
+    <div className="w-full flex flex-col min-h-svh px-4 pt-2">
+      <div className="flex items-center">
         <div>
           <SidebarTrigger />
         </div>
@@ -374,9 +410,9 @@ export default function TablePage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/">Home</Link>
-              </BreadcrumbLink>
+                <BreadcrumbLink asChild>
+                  <Link href="/">Home</Link>
+                </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
@@ -387,58 +423,54 @@ export default function TablePage() {
         </div>
       </div>
 
-      <div className="px-4 mt-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-          </Button>
-
-          <Button
-            onClick={() => setIsAddDialogOpen(true)}
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            Add Record
-          </Button>
-
-          {selectedRows.size > 0 && (
-            <Button
-              onClick={openDeleteDialog}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              size="sm"
-            >
-              <Trash2 className="h-4 w-4" />
-              {isDeleting
-                ? "Deleting..."
-                : `Delete Selected (${selectedRows.size})`}
-            </Button>
-          )}
-        </div>
-
-        <div className="mt-4">
-          <DataGrid
-            columns={gridColumns}
-            rows={data}
-            rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
-            selectedRows={selectedRows}
-            onSelectedRowsChange={handleRowSelectionChange}
-            onRowsChange={handleCellChange}
-            // renderCheckbox={props => Checkbox} TODO: add checkbox component
-            className={clsx(theme === "light" && "rdg-light", "rounded-lg")}
+      <div className="flex items-center gap-3 mt-6">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
           />
-        </div>
+        </Button>
 
-        <div className="mt-4 text-sm text-muted-foreground">
-          Showing {data.length} of {pagination.total} records
-        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)} size="sm">
+          <Plus className="h-4 w-4" />
+          Add Record
+        </Button>
+
+        {selectedRows.size > 0 && (
+          <Button
+            onClick={openDeleteDialog}
+            disabled={isDeleting}
+            className="bg-red-600 hover:bg-red-700 text-white"
+            size="sm"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isDeleting
+              ? "Deleting..."
+              : `Delete Selected (${selectedRows.size})`}
+          </Button>
+        )}
+      </div>
+
+      <DataGrid
+        columns={gridColumns}
+        rows={data}
+        rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
+        selectedRows={selectedRows}
+        onSelectedRowsChange={handleRowSelectionChange}
+        onRowsChange={handleCellChange}
+        // renderCheckbox={props => Checkbox} TODO: add checkbox component
+        className={clsx(
+          theme === "light" && "rdg-light",
+          "rounded-lg mt-4 flex-auto",
+        )}
+      />
+
+      <div className="my-4 text-sm text-muted-foreground">
+        Showing {data.length} of {pagination.total} records
       </div>
 
       <Toaster position="bottom-right" richColors />
@@ -461,9 +493,15 @@ export default function TablePage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDeleteAction === "row" ? (
-                <>This action will delete the selected row from the {tableName} table.</>
+                <>
+                  This action will delete the selected row from the {tableName}{" "}
+                  table.
+                </>
               ) : (
-                <>This action will delete {selectedRows.size} selected row(s) from the {tableName} table.</>
+                <>
+                  This action will delete {selectedRows.size} selected row(s)
+                  from the {tableName} table.
+                </>
               )}
               <br />
               This action cannot be undone.
@@ -472,7 +510,11 @@ export default function TablePage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={pendingDeleteAction === "row" ? handleDeleteSingleRow : handleDeleteSelected}
+              onClick={
+                pendingDeleteAction === "row"
+                  ? handleDeleteSingleRow
+                  : handleDeleteSelected
+              }
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isDeleting ? "Deleting..." : "Delete"}
@@ -529,8 +571,10 @@ function AddRecordDialog({
   };
 
   const isDateColumn = (dataType: string) => {
-    return dataType.toLowerCase().includes('date') ||
-           dataType.toLowerCase().includes('timestamp');
+    return (
+      dataType.toLowerCase().includes("date") ||
+      dataType.toLowerCase().includes("timestamp")
+    );
   };
 
   return (
@@ -551,19 +595,28 @@ function AddRecordDialog({
             const isDate = isDateColumn(column.data_type);
 
             return (
-              <div key={column.column_name} className="grid grid-cols-4 items-center gap-4">
+              <div
+                key={column.column_name}
+                className="grid grid-cols-4 items-center gap-4"
+              >
                 <label htmlFor={column.column_name} className="text-right">
                   {column.column_name}
                 </label>
                 {isDate ? (
                   <div className="col-span-3">
                     <DatePicker
-                      date={formData[column.column_name] ? new Date(formData[column.column_name] as string) : undefined}
+                      date={
+                        formData[column.column_name]
+                          ? new Date(formData[column.column_name] as string)
+                          : undefined
+                      }
                       setDate={(date) => {
                         // Use a more direct approach to update the form data
                         setFormData({
                           ...formData,
-                          [column.column_name]: date ? date.toISOString() : null
+                          [column.column_name]: date
+                            ? date.toISOString()
+                            : null,
                         });
                       }}
                     />
@@ -572,8 +625,14 @@ function AddRecordDialog({
                   <input
                     id={column.column_name}
                     className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={formData[column.column_name] !== undefined ? String(formData[column.column_name]) : ''}
-                    onChange={(e) => handleInputChange(column.column_name, e.target.value)}
+                    value={
+                      formData[column.column_name] !== undefined
+                        ? String(formData[column.column_name])
+                        : ""
+                    }
+                    onChange={(e) =>
+                      handleInputChange(column.column_name, e.target.value)
+                    }
                     placeholder={`Enter ${column.column_name}`}
                   />
                 )}
