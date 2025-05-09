@@ -243,7 +243,7 @@ export function AppSidebar() {
                           </SidebarMenuAction>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="right" align="start">
-                          <DropdownMenuItem                             onClick={() => {
+                          <DropdownMenuItem onClick={() => {
                               setTableToDelete(tableName);
                               // Use setTimeout to ensure the context menu is fully closed before opening the dialog
                               setTimeout(() => {
