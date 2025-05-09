@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { createDatabaseSchema, deleteTableAction, fetchDatabaseSchemas, fetchDatabaseTables } from "@/lib/actions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useParams } from "next/navigation";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(['public']);
@@ -64,6 +65,7 @@ export function AppSidebar() {
   const [newSchemaName, setNewSchemaName] = useState('');
   const [isCreatingSchema, setIsCreatingSchema] = useState(false);
   const [createSchemaError, setCreateSchemaError] = useState<string | null>(null);
+  const params = useParams<{ name: string }>()
 
   // Function to load schemas
   const loadSchemas = useCallback(async () => {
@@ -208,7 +210,7 @@ export function AppSidebar() {
                         <ChevronDown className="ml-auto" />
                       </SidebarMenuButton>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
+                    <DropdownMenuContent>
                       {schemas.filter(s => s !== selectedSchema).map((schema) => (
                         <DropdownMenuItem key={schema} onClick={() => handleSchemaChange(schema)}>
                           <span>{schema}</span>
@@ -230,7 +232,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {tables.map((tableName) => (
                     <SidebarMenuItem key={tableName}>
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton asChild isActive={params.name === tableName}>
                         <Link href={`/tables/${tableName}`}>
                           <Table className="h-4 w-4" />
                           <span>{tableName}</span>
