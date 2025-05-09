@@ -327,30 +327,6 @@ export default function TablePage() {
         editable: true,
       } as Column<Record<string, unknown>>);
     }
-
-    // Add actions column
-    cols.push({
-      key: 'actions',
-      name: 'Actions',
-      width: 100,
-      formatter: ({ row }: { row: Record<string, unknown> }) => {
-        const rowKey = String(row.id || row.ID || row.uuid || row.UUID);
-        return (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRowDelete(rowKey);
-            }}
-            className="h-8 w-8 text-red-600"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        );
-      }
-    } as Column<Record<string, unknown>>);
-
     return cols;
   }, [columns, checkIsDateColumn, handleRowDelete]);
 
@@ -465,7 +441,7 @@ export default function TablePage() {
         </div>
       </div>
 
-      <Toaster position="bottom-left" richColors />
+      <Toaster position="bottom-right" richColors />
 
       {/* Add Record Dialog */}
       <AddRecordDialog
