@@ -14,10 +14,9 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="icon"
       onClick={toggleTheme}
-      className="h-8 w-8"
       title="Toggle theme"
     >
       <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:rotate-90 dark:scale-0" />

@@ -2,7 +2,7 @@
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Database, Plus, RefreshCw, Table, Trash2 } from "lucide-react";
+import { ChevronDown, Database, MoreHorizontal, Plus, RefreshCw, Table, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -28,9 +28,12 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarGroupAction,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuAction,
 } from "@/components/ui/sidebar";
 import {
   Select,
@@ -40,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDatabaseSchema, deleteTableAction, fetchDatabaseSchemas, fetchDatabaseTables } from "@/lib/actions";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(['public']);
@@ -166,110 +170,95 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar>
+        <SidebarHeader>
+          <div className="text-center font-extralight text-2xl font-monospace tracking-widest">
+            BASED
+          </div>
+        </SidebarHeader>
         <SidebarContent>
-          {/* Header and Schema Selector */}
-          <div className="px-3 py-2 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <Database className="mr-2 h-4 w-4" />
-                <span className="font-medium">Database Tables</span>
-              </div>
+          <SidebarGroup>
+            <SidebarGroupContent className="flex justify-center gap-2">
+              <ThemeToggle />
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={() => loadTables(selectedSchema)}
                 disabled={refreshing}
-                className="h-6 w-6"
-                title="Refresh tables list"
+                title="Refresh"
               >
                 <RefreshCw
                   className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 />
               </Button>
-            </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-            {/* Schema Selector */}
-            <Select value={selectedSchema} onValueChange={handleSchemaChange}>
-              <SelectTrigger className="w-full h-8 text-xs">
-                <SelectValue placeholder="Select schema" />
-              </SelectTrigger>
-              <SelectContent>
-                {schemas.map((schema) => (
-                  <SelectItem key={schema} value={schema}>
-                    {schema}
-                  </SelectItem>
-                ))}
-                <SelectItem key="create_new" value="create_new" className="text-green-600 font-medium">
-                  <div className="flex items-center">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create New Schema
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Tables List */}
           <SidebarGroup>
+            <SidebarGroupLabel>Schema</SidebarGroupLabel>
+            <SidebarGroupAction className="mr-0.5">
+              <Plus /> <span className="sr-only">Add Schema</span>
+            </SidebarGroupAction>
             <SidebarGroupContent>
               <SidebarMenu>
-                {loading ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton disabled>
-                      <span>Loading tables...</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : error ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton disabled>
-                      <span>{error}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : tables.length === 0 ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton disabled>
-                      <span>No tables found</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : (
-                  tables.map((tableName) => (
+                <SidebarMenuItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton>
+                        {selectedSchema || "Select schema"}
+                        <ChevronDown className="ml-auto" />
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
+                      {schemas.filter(s => s !== selectedSchema).map((schema) => (
+                        <DropdownMenuItem key={schema} onClick={() => handleSchemaChange(schema)}>
+                          <span>{schema}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>Tables</SidebarGroupLabel>
+            <SidebarGroupAction className="mr-0.5">
+              <Plus /> <span className="sr-only">Add table</span>
+            </SidebarGroupAction>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {tables.map((tableName) => (
                     <SidebarMenuItem key={tableName}>
-                      <ContextMenu>
-                        <ContextMenuTrigger>
-                          <SidebarMenuButton asChild>
-                            <Link href={`/tables/${tableName}`}>
-                              <Table className="h-4 w-4" />
-                              <span>{tableName}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                          <ContextMenuItem
-                            variant="destructive"
-                            onClick={() => {
+                      <SidebarMenuButton asChild>
+                        <Link href={`/tables/${tableName}`}>
+                          <Table className="h-4 w-4" />
+                          <span>{tableName}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction className="mr-0.5">
+                            <MoreHorizontal />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start">
+                          <DropdownMenuItem                             onClick={() => {
                               setTableToDelete(tableName);
                               // Use setTimeout to ensure the context menu is fully closed before opening the dialog
                               setTimeout(() => {
                                 setIsDeleteDialogOpen(true);
                               }, 100);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Table
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
+                            }}>
+                            <span>Drop table</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </SidebarMenuItem>
-                  ))
-                )}
+                  ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-
-          {/* Theme toggle at the bottom of sidebar */}
-          <div className="mt-auto pt-4 pb-2 flex justify-center">
-            <ThemeToggle />
-          </div>
         </SidebarContent>
       </Sidebar>
 
