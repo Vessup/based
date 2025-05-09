@@ -11,12 +11,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -26,30 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { addTableRow, deleteRows, fetchTableData, updateTableCell } from "@/lib/actions";
-import { format, isValid } from "date-fns";
-import { Check, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { format, isValid, parseISO } from "date-fns";
+import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { DataGrid, Column, SelectColumn, textEditor } from "react-data-grid";
 import { toast, Toaster } from "sonner";
+import "react-data-grid/lib/styles.css";
 
 // Define types for our data
 type ColumnInfo = {
@@ -64,6 +42,46 @@ type PaginationInfo = {
   pageSize: number;
   pageCount: number;
 };
+
+// Custom date editor component for react-data-grid
+interface EditorProps {
+  row: Record<string, unknown>;
+  column: { key: string };
+  onRowChange: (row: Record<string, unknown>) => void;
+  onClose: (commit: boolean) => void;
+}
+
+function DateEditor({ row, column, onRowChange, onClose }: EditorProps) {
+  const value = row[column.key] ? new Date(row[column.key] as string) : undefined;
+
+  return (
+    <DatePicker
+      date={value}
+      setDate={(date) => {
+        onRowChange({ ...row, [column.key]: date ? date.toISOString() : null });
+        onClose(true);
+      }}
+    />
+  );
+}
+
+// Custom date formatter component for react-data-grid
+function DateFormatter({ value }: { value: unknown }) {
+  if (!value) return <span className="text-gray-400">NULL</span>;
+
+  try {
+    if (typeof value === 'string') {
+      const date = parseISO(value);
+      if (isValid(date)) {
+        return format(date, 'PPP');
+      }
+    }
+  } catch (e) {
+    // Fall back to raw value if parsing fails
+  }
+
+  return String(value);
+}
 
 export default function TablePage() {
   // Get route params and search params
@@ -87,7 +105,7 @@ export default function TablePage() {
   });
 
   // State for selected rows
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
@@ -95,73 +113,34 @@ export default function TablePage() {
     "row" | "selected" | null
   >(null);
 
-  // State for cell editing
-  const [editingCell, setEditingCell] = useState<{
-    rowKey: string;
-    columnName: string;
-    value: unknown;
-    dataType: string;
-  } | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
   // State for adding new record
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newRecord, setNewRecord] = useState<Record<string, unknown>>({});
   const [isAddingRecord, setIsAddingRecord] = useState(false);
-
-  // Handle checkbox change
-  const handleCheckboxChange = (rowKey: string) => {
-    setSelectedRows((prev) =>
-      prev.includes(rowKey)
-        ? prev.filter((id) => id !== rowKey)
-        : [...prev, rowKey],
-    );
-  };
-
-  // Handle select all checkboxes
-  const handleSelectAll = () => {
-    if (selectedRows.length === data.length) {
-      // If all are selected, unselect all
-      setSelectedRows([]);
-    } else {
-      // Otherwise, select all
-      const allRowKeys = data.map((row, index) =>
-        String(row.id || row.ID || row.uuid || row.UUID || `row-${index}`),
-      );
-      setSelectedRows(allRowKeys);
-    }
-  };
 
   // Open delete confirmation dialog for selected rows
   const openDeleteDialog = () => {
-    if (selectedRows.length === 0) return;
+    if (selectedRows.size === 0) return;
     setPendingDeleteAction("selected");
-    // Use setTimeout to ensure the context menu is fully closed before opening the dialog
-    setTimeout(() => {
-      setIsDeleteDialogOpen(true);
-    }, 100);
+    setIsDeleteDialogOpen(true);
   };
 
   // Open delete confirmation dialog for a single row
-  const openRowDeleteDialog = (rowKey: string) => {
+  const openRowDeleteDialog = useCallback((rowKey: string) => {
     setRowToDelete(rowKey);
     setPendingDeleteAction("row");
-    // Use setTimeout to ensure the context menu is fully closed before opening the dialog
-    setTimeout(() => {
-      setIsDeleteDialogOpen(true);
-    }, 100);
-  };
+    setIsDeleteDialogOpen(true);
+  }, []);
 
   // Handle delete selected rows
   const handleDeleteSelected = async () => {
     setIsDeleting(true);
     try {
-      const result = await deleteRows(tableName, selectedRows);
+      const result = await deleteRows(tableName, Array.from(selectedRows));
 
       if (result.success) {
         toast.success(`Successfully deleted ${result.deletedCount} row(s)`);
         // Clear selection
-        setSelectedRows([]);
+        setSelectedRows(new Set());
         // Reload the data
         loadTableData();
       } else {
@@ -199,50 +178,6 @@ export default function TablePage() {
     }
   };
 
-  // Handle cell double click to start editing
-  const handleCellDoubleClick = (rowKey: string, columnName: string, value: unknown, dataType: string) => {
-    setEditingCell({
-      rowKey,
-      columnName,
-      value,
-      dataType,
-    });
-  };
-
-  // Handle cell edit save
-  const handleSaveEdit = async () => {
-    if (!editingCell) return;
-
-    setIsSaving(true);
-    try {
-      // Call the API to update the cell
-      const result = await updateTableCell(
-        tableName,
-        editingCell.rowKey,
-        editingCell.columnName,
-        editingCell.value
-      );
-
-      if (result.success) {
-        // Reload the data to reflect changes
-        loadTableData();
-        toast.success("Cell updated successfully");
-      } else {
-        toast.error(result.message || "Failed to update cell");
-      }
-    } catch (error) {
-      toast.error(`Error updating cell: ${error}`);
-    } finally {
-      setIsSaving(false);
-      setEditingCell(null);
-    }
-  };
-
-  // Handle cell edit cancel
-  const handleCancelEdit = () => {
-    setEditingCell(null);
-  };
-
   // Determine if a column is a date type
   const isDateColumn = (dataType: string) => {
     return dataType.toLowerCase().includes('date') ||
@@ -270,6 +205,35 @@ export default function TablePage() {
     }
   };
 
+  // Handle cell edit
+  const handleCellEdit = async (rowKey: string, columnName: string, value: unknown) => {
+    try {
+      const result = await updateTableCell(tableName, rowKey, columnName, value);
+
+      if (result.success) {
+        toast.success("Cell updated successfully");
+        // Update the local data to reflect the change
+        setData(prevData =>
+          prevData.map(row => {
+            const id = String(row.id || row.ID || row.uuid || row.UUID);
+            if (id === rowKey) {
+              return { ...row, [columnName]: value };
+            }
+            return row;
+          })
+        );
+      } else {
+        toast.error(result.message || "Failed to update cell");
+        // Reload the data to revert changes
+        loadTableData();
+      }
+    } catch (error) {
+      toast.error(`Error updating cell: ${error}`);
+      // Reload the data to revert changes
+      loadTableData();
+    }
+  };
+
   // Function to load table data
   const loadTableData = useCallback(
     async (isRefresh = false) => {
@@ -287,7 +251,18 @@ export default function TablePage() {
         if (result.error) {
           setError(result.error);
         } else {
-          setData(result.data.records);
+          // Convert any Date objects to ISO strings to avoid React rendering issues
+          const processedData = result.data.records.map((record: Record<string, unknown>) => {
+            const processedRecord = { ...record };
+            for (const key in processedRecord) {
+              if (processedRecord[key] instanceof Date) {
+                processedRecord[key] = (processedRecord[key] as Date).toISOString();
+              }
+            }
+            return processedRecord;
+          });
+
+          setData(processedData);
           setColumns(result.columns);
           setPagination(result.data.pagination);
           setError(null);
@@ -312,77 +287,97 @@ export default function TablePage() {
     loadTableData();
   }, [loadTableData]);
 
-  // Generate pagination items
-  const renderPaginationItems = () => {
-    const items = [];
-    const maxVisiblePages = 5;
+  // Function to determine if a column is a date type - defined inside the component to avoid recreating
+  const checkIsDateColumn = useCallback((dataType: string) => {
+    return dataType.toLowerCase().includes('date') ||
+           dataType.toLowerCase().includes('timestamp');
+  }, []);
 
-    // Always show first page
-    items.push(
-      <PaginationItem key="first">
-        <PaginationLink
-          href={`/tables/${tableName}?page=1&pageSize=${pageSize}`}
-          isActive={page === 1}
-        >
-          1
-        </PaginationLink>
-      </PaginationItem>,
-    );
+  // Function to open delete dialog for a row - defined with useCallback to avoid recreating
+  const handleRowDelete = useCallback((rowKey: string) => {
+    setRowToDelete(rowKey);
+    setPendingDeleteAction("row");
+    setIsDeleteDialogOpen(true);
+  }, []);
 
-    // Calculate range of pages to show
-    const startPage = Math.max(2, page - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(
-      pagination.pageCount - 1,
-      startPage + maxVisiblePages - 2,
-    );
+  // Create grid columns based on database columns
+  const gridColumns = useMemo(() => {
+    if (!columns.length) return [];
 
-    // Adjust if we're near the beginning
-    if (startPage > 2) {
-      items.push(
-        <PaginationItem key="ellipsis-start">
-          <PaginationEllipsis />
-        </PaginationItem>,
-      );
+    // Add select column for row selection
+    const cols: Column<Record<string, unknown>>[] = [SelectColumn];
+
+    // Add columns from database
+    for (const column of columns) {
+      const isDate = checkIsDateColumn(column.data_type);
+
+      cols.push({
+        key: column.column_name,
+        name: column.column_name,
+        editor: isDate ? DateEditor : textEditor,
+        formatter: isDate ? DateFormatter : undefined,
+        editable: true,
+      } as Column<Record<string, unknown>>);
     }
 
-    // Add middle pages
-    for (let i = startPage; i <= endPage; i++) {
-      items.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            href={`/tables/${tableName}?page=${i}&pageSize=${pageSize}`}
-            isActive={page === i}
+    // Add actions column
+    cols.push({
+      key: 'actions',
+      name: 'Actions',
+      width: 100,
+      formatter: ({ row }: { row: Record<string, unknown> }) => {
+        const rowKey = String(row.id || row.ID || row.uuid || row.UUID);
+        return (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRowDelete(rowKey);
+            }}
+            className="h-8 w-8 text-red-600"
           >
-            {i}
-          </PaginationLink>
-        </PaginationItem>,
-      );
-    }
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        );
+      }
+    } as Column<Record<string, unknown>>);
 
-    // Add ellipsis if needed
-    if (endPage < pagination.pageCount - 1) {
-      items.push(
-        <PaginationItem key="ellipsis-end">
-          <PaginationEllipsis />
-        </PaginationItem>,
-      );
-    }
+    return cols;
+  }, [columns, checkIsDateColumn, handleRowDelete]);
 
-    // Always show last page if we have more than one page
-    if (pagination.pageCount > 1) {
-      items.push(
-        <PaginationItem key="last">
-          <PaginationLink
-            href={`/tables/${tableName}?page=${pagination.pageCount}&pageSize=${pageSize}`}
-            isActive={page === pagination.pageCount}
-          >
-            {pagination.pageCount}
-          </PaginationLink>
-        </PaginationItem>,
-      );
-    }
+  // Handle row selection changes
+  const handleRowSelectionChange = (selectedRows: Set<string>) => {
+    setSelectedRows(selectedRows);
+  };
 
-    return items;
+  // Handle cell changes
+  const handleCellChange = (
+    newRows: Record<string, unknown>[],
+    { indexes, column }: { indexes: number[], column: { key: string } }
+  ) => {
+    const rowIndex = indexes[0];
+    const row = newRows[rowIndex];
+    const rowKey = String(row.id || row.ID || row.uuid || row.UUID);
+    const columnName = column.key;
+    const value = row[columnName];
+
+    // Process the rows to ensure no Date objects
+    const processedRows = newRows.map((row: Record<string, unknown>) => {
+      const processedRow = { ...row };
+      for (const key in processedRow) {
+        if (processedRow[key] instanceof Date) {
+          processedRow[key] = (processedRow[key] as Date).toISOString();
+        }
+      }
+      return processedRow;
+    });
+
+    // Update the data
+    setData(processedRows);
+
+    // Save the change to the database
+    handleCellEdit(rowKey, columnName, value);
   };
 
   if (loading) {
@@ -437,7 +432,6 @@ export default function TablePage() {
     );
   }
 
-
   return (
     <div className="p-8">
       <Toaster position="top-right" richColors />
@@ -464,13 +458,26 @@ export default function TablePage() {
 
         <Button
           onClick={openDeleteDialog}
-          disabled={selectedRows.length === 0 || isDeleting}
+          disabled={selectedRows.size === 0 || isDeleting}
           className="bg-red-600 hover:bg-red-700 text-white"
           size="sm"
         >
           {isDeleting
             ? "Deleting..."
-            : `Delete Selected (${selectedRows.length})`}
+            : `Delete Selected (${selectedRows.size})`}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1 ml-auto"
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+          />
+          {refreshing ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 
@@ -485,7 +492,7 @@ export default function TablePage() {
               {pendingDeleteAction === "row" ? (
                 <>This action will delete the selected row from the {tableName} table.</>
               ) : (
-                <>This action will delete {selectedRows.length} selected row(s) from the {tableName} table.</>
+                <>This action will delete {selectedRows.size} selected row(s) from the {tableName} table.</>
               )}
               <br />
               This action cannot be undone.
@@ -504,179 +511,20 @@ export default function TablePage() {
       </AlertDialog>
 
       <div className="rounded-md border">
-        <Table>
-          <TableCaption className="pb-6">
-            Showing {data.length} of {pagination.total} records
-          </TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <input
-                  type="checkbox"
-                  checked={
-                    data.length > 0 && selectedRows.length === data.length
-                  }
-                  onChange={handleSelectAll}
-                  className="h-4 w-4"
-                />
-              </TableHead>
-              {columns.map((column) => (
-                <TableHead key={column.column_name}>
-                  {column.column_name}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((row, rowIndex) => {
-              // Create a unique key from row data if possible, fallback to index if needed
-              const rowKey = String(
-                row.id || row.ID || row.uuid || row.UUID || `row-${rowIndex}`,
-              );
-              const isSelected = selectedRows.includes(rowKey);
-
-              return (
-                <ContextMenu key={rowKey}>
-                  <ContextMenuTrigger>
-                    <TableRow
-                      className={
-                        isSelected ? "bg-zinc-100 dark:bg-zinc-800" : ""
-                      }
-                    >
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleCheckboxChange(rowKey)}
-                          className="h-4 w-4"
-                        />
-                      </TableCell>
-                      {columns.map((column) => {
-                        const cellValue = row[column.column_name as keyof typeof row];
-                        const isEditing =
-                          editingCell?.rowKey === rowKey &&
-                          editingCell?.columnName === column.column_name;
-                        const isDate = isDateColumn(column.data_type);
-
-                        // Format date values for display
-                        let displayValue = cellValue !== null
-                          ? String(cellValue)
-                          : null;
-
-                        // Try to parse and format dates for better display
-                        if (isDate && displayValue && !isEditing) {
-                          try {
-                            const date = new Date(displayValue);
-                            if (isValid(date)) {
-                              displayValue = format(date, 'PPP');
-                            }
-                          } catch (e) {
-                            // Keep original value if parsing fails
-                          }
-                        }
-
-                        return (
-                          <TableCell
-                            key={`${rowIndex}-${column.column_name}`}
-                            onDoubleClick={() => handleCellDoubleClick(
-                              rowKey,
-                              column.column_name,
-                              cellValue,
-                              column.data_type
-                            )}
-                          >
-                            {isEditing ? (
-                              isDate ? (
-                                <DatePicker
-                                  date={editingCell.value ? new Date(editingCell.value as string) : undefined}
-                                  setDate={(date) => {
-                                    setEditingCell({
-                                      ...editingCell,
-                                      value: date ? date.toISOString() : null
-                                    });
-                                    // Auto-save for date picker
-                                    setTimeout(() => handleSaveEdit(), 100);
-                                  }}
-                                />
-                              ) : (
-                                <input
-                                  value={editingCell.value !== null ? String(editingCell.value) : ''}
-                                  onChange={(e) => {
-                                    setEditingCell({
-                                      ...editingCell,
-                                      value: e.target.value
-                                    });
-                                  }}
-                                  onBlur={handleSaveEdit}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      handleSaveEdit();
-                                    } else if (e.key === 'Escape') {
-                                      handleCancelEdit();
-                                    }
-                                  }}
-                                  className="w-full h-full border-0 bg-transparent focus:outline-none focus:ring-0"
-                                />
-                              )
-                            ) : (
-                              <>
-                                {cellValue !== null ? (
-                                  displayValue
-                                ) : (
-                                  <span className="text-gray-400">NULL</span>
-                                )}
-                              </>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem
-                      variant="destructive"
-                      onClick={() => openRowDeleteDialog(rowKey)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Row
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <DataGrid
+          columns={gridColumns}
+          rows={data}
+          rowKeyGetter={(row: Record<string, unknown>) => String(row.id || row.ID || row.uuid || row.UUID)}
+          selectedRows={selectedRows}
+          onSelectedRowsChange={handleRowSelectionChange}
+          onRowsChange={handleCellChange}
+          className="rdg-light h-[500px]"
+        />
       </div>
 
-      {pagination.pageCount > 1 && (
-        <div className="mt-4">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href={`/tables/${tableName}?page=${Math.max(1, page - 1)}&pageSize=${pageSize}`}
-                  aria-disabled={page === 1}
-                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-
-              {renderPaginationItems()}
-
-              <PaginationItem>
-                <PaginationNext
-                  href={`/tables/${tableName}?page=${Math.min(pagination.pageCount, page + 1)}&pageSize=${pageSize}`}
-                  aria-disabled={page === pagination.pageCount}
-                  className={
-                    page === pagination.pageCount
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+      <div className="mt-4 text-sm text-gray-500">
+        Showing {data.length} of {pagination.total} records
+      </div>
     </div>
   );
 }
