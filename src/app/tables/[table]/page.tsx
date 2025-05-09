@@ -320,7 +320,9 @@ export default function TablePage() {
       cols.push({
         key: column.column_name,
         name: column.column_name,
-        editor: isDate ? DateEditor : textEditor,
+        // editor: isDate ? DateEditor : textEditor,
+        width: 'max-content',
+        resizable: true,
         formatter: isDate ? DateFormatter : undefined,
         editable: true,
       } as Column<Record<string, unknown>>);
