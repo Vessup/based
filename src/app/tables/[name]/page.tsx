@@ -28,6 +28,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, Column, SelectColumn, textEditor } from "react-data-grid";
 import { toast, Toaster } from "sonner";
 import "react-data-grid/lib/styles.css";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import Link from "next/link";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 // Define types for our data
 type ColumnInfo = {
@@ -380,62 +383,69 @@ export default function TablePage() {
     handleCellEdit(rowKey, columnName, value);
   };
 
-  if (loading) {
-    return <div className="p-8">Loading table data...</div>;
-  }
-
-  if (error) {
-    return <div className="p-8 text-red-500">Error: {error}</div>;
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="p-8">
-        <Toaster position="top-right" richColors />
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Table: {tableName}</h1>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setIsAddDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-white"
-              size="sm"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Record
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={refreshing || loading}
-              className="flex items-center gap-1"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-              />
-              {refreshing ? "Refreshing..." : "Refresh"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Add Record Dialog */}
-        <AddRecordDialog
-          isOpen={isAddDialogOpen}
-          onClose={() => setIsAddDialogOpen(false)}
-          columns={columns}
-          tableName={tableName}
-          onAddRecord={handleAddRecord}
-        />
-
-        <p>No records found in this table. Click "Add Record" to add your first record.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-8">
-      <Toaster position="top-right" richColors />
-      <h1 className="text-2xl font-bold mb-4">Table: {tableName}</h1>
+    <div className="w-full">
+      <div className="flex items-center p-2.5 mt-0.25">
+        <div>
+          <SidebarTrigger />
+        </div>
+        <div className="ml-4">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/">Home</Link>
+              </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{tableName}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </div>
+
+      <div className="p-4.5">
+        <div className="mb-4 flex gap-2">
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            size="sm"
+          >
+            <Plus className="h-4 w-4" />
+            Add Record
+          </Button>
+
+          {selectedRows.size > 0 && (
+            <Button
+              onClick={openDeleteDialog}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              size="sm"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting
+                ? "Deleting..."
+                : `Delete Selected (${selectedRows.size})`}
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1 ml-auto"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
+      </div>
+
+      <Toaster position="bottom-left" richColors />
 
       {/* Add Record Dialog */}
       <AddRecordDialog
@@ -446,40 +456,7 @@ export default function TablePage() {
         onAddRecord={handleAddRecord}
       />
 
-      <div className="mb-4 flex gap-2">
-        <Button
-          onClick={() => setIsAddDialogOpen(true)}
-          className="bg-green-600 hover:bg-green-700 text-white"
-          size="sm"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Record
-        </Button>
 
-        <Button
-          onClick={openDeleteDialog}
-          disabled={selectedRows.size === 0 || isDeleting}
-          className="bg-red-600 hover:bg-red-700 text-white"
-          size="sm"
-        >
-          {isDeleting
-            ? "Deleting..."
-            : `Delete Selected (${selectedRows.size})`}
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-1 ml-auto"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-          />
-          {refreshing ? "Refreshing..." : "Refresh"}
-        </Button>
-      </div>
 
       <AlertDialog
         open={isDeleteDialogOpen}
