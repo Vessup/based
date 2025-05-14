@@ -8,6 +8,12 @@ import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import "react-data-grid/lib/styles.css";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { RenderCheckboxProps } from "react-data-grid";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from "@/components/ui/context-menu";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -55,6 +61,26 @@ export function TableDataGrid({
 }: TableDataGridProps) {
   const { theme } = useTheme();
 
+  // Context menu cell value state
+  const [contextMenuValue, setContextMenuValue] = React.useState<string>("");
+
+  // Handler for right-click on a cell
+  const handleCellContextMenu = React.useCallback((
+    args: { row: Record<string, unknown>; column: { key: string } },
+    event: React.MouseEvent
+  ) => {
+    // Get the cell value as string
+    const value = args.row[args.column.key];
+    setContextMenuValue(value === undefined || value === null ? "" : String(value));
+  }, []);
+
+  // Handler to copy value
+  const handleCopy = React.useCallback(() => {
+    if (contextMenuValue) {
+      navigator.clipboard.writeText(contextMenuValue);
+    }
+  }, [contextMenuValue]);
+
   // Enhance columns to add cellClass/headerCellClass for outline control
   const enhancedColumns = columns.map((col) => {
     // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
@@ -96,26 +122,36 @@ export function TableDataGrid({
           </Button>
         )}
       </div>
-      <DataGrid
-        columns={enhancedColumns}
-        rows={data}
-        rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
-        selectedRows={selectedRows}
-        onSelectedRowsChange={onSelectedRowsChange}
-        onRowsChange={onRowsChange}
-        renderers={{
-          renderCheckbox: ({ onChange, ...props }: RenderCheckboxProps) => (
-            <Checkbox
-              {...props}
-              onCheckedChange={(checked) => onChange(!!checked, false)}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div style={{ position: "relative" }}>
+            <DataGrid
+              columns={enhancedColumns}
+              rows={data}
+              rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
+              selectedRows={selectedRows}
+              onSelectedRowsChange={onSelectedRowsChange}
+              onRowsChange={onRowsChange}
+              renderers={{
+                renderCheckbox: ({ onChange, ...props }: RenderCheckboxProps) => (
+                  <Checkbox
+                    {...props}
+                    onCheckedChange={(checked) => onChange(!!checked, false)}
+                  />
+                )
+              }}
+              className={clsx(
+                theme === "light" && "rdg-light",
+                "rounded-lg mt-4 flex-auto"
+              )}
+              onCellContextMenu={handleCellContextMenu}
             />
-          )
-        }}
-        className={clsx(
-          theme === "light" && "rdg-light",
-          "rounded-lg mt-4 flex-auto"
-        )}
-      />
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleCopy}>Copy value</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
       <div className="my-4 text-sm text-muted-foreground">
         Showing {data.length} of {pagination.total} records
       </div>
