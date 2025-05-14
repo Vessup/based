@@ -120,3 +120,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide outline for react-data-grid header and checkbox cells */
+.rdg-header-cell,
+.rdg-header-cell:focus-visible,
+.rdg-header-cell:focus,
+.rdg-cell.rdg-checkbox-cell,
+.rdg-cell.rdg-checkbox-cell:focus-visible,
+.rdg-cell.rdg-checkbox-cell:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}

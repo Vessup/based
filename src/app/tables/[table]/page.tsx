@@ -47,10 +47,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import clsx from "clsx";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { TableDataGrid } from "@/components/DataTableGrid";
+import { TableDataGrid } from "@/components/TableDataGrid";
 
 // Define types for our data
 type ColumnInfo = {
