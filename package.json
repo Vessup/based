@@ -1,7 +1,7 @@
 {
   "name": "based",
   "version": "0.1.0",
-  "private": true,
+  "license": "CC BY-NC 4.0",
   "scripts": {
     "dev": "bun --bun next dev --turbopack",
     "build": "bun --bun next build",
