@@ -63,6 +63,7 @@ import {
   fetchDatabaseTables,
 } from "@/lib/actions";
 import { useParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(["public"]);
@@ -87,6 +88,9 @@ export function AppSidebar() {
     null,
   );
   const params = useParams<{ table: string }>();
+
+  // State for table search
+  const [tableSearch, setTableSearch] = useState("");
 
   // Function to load schemas
   const loadSchemas = useCallback(async () => {
@@ -257,44 +261,57 @@ export function AppSidebar() {
 
           <SidebarGroup>
             <SidebarGroupLabel>Tables</SidebarGroupLabel>
+            <div className="pb-2">
+              <Input
+                type="text"
+                value={tableSearch}
+                onChange={e => setTableSearch(e.target.value)}
+                placeholder="Search tables..."
+                aria-label="Search tables"
+              />
+            </div>
             <SidebarGroupAction className="mr-0.5">
               <Plus /> <span className="sr-only">Add table</span>
             </SidebarGroupAction>
             <SidebarGroupContent>
               <SidebarMenu>
-                {tables.map((tableName) => (
-                  <SidebarMenuItem key={tableName}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={params.table === tableName}
-                    >
-                      <Link href={`/tables/${tableName}`}>
-                        <Table className="h-4 w-4" />
-                        <span>{tableName}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction className="mr-0.5">
-                          <MoreHorizontal />
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setTableToDelete(tableName);
-                            // Use setTimeout to ensure the context menu is fully closed before opening the dialog
-                            setTimeout(() => {
-                              setIsDeleteDialogOpen(true);
-                            }, 100);
-                          }}
-                        >
-                          <span>Drop table</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                ))}
+                {tables
+                  .filter((tableName) =>
+                    tableName.toLowerCase().includes(tableSearch.toLowerCase())
+                  )
+                  .map((tableName) => (
+                    <SidebarMenuItem key={tableName}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={params.table === tableName}
+                      >
+                        <Link href={`/tables/${tableName}`}>
+                          <Table className="h-4 w-4" />
+                          <span>{tableName}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction className="mr-0.5">
+                            <MoreHorizontal />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setTableToDelete(tableName);
+                              // Use setTimeout to ensure the context menu is fully closed before opening the dialog
+                              setTimeout(() => {
+                                setIsDeleteDialogOpen(true);
+                              }, 100);
+                            }}
+                          >
+                            <span>Drop table</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </SidebarMenuItem>
+                  ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

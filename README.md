@@ -11,9 +11,6 @@ separate component for this as the table page is getting too large.
 Add paging to the data grid by using the pagination component and adding it to
 the button toolbar on the right side.
 
-Use the `renderCheckbox` property on the data grid to use our custom checkbox
-component instead of the one that comes with react-data-grid.
-
 Refactor the homepage to show (and allow you to edit) the database connection
 information.
 
@@ -33,8 +30,6 @@ persisted to local storage.
 
 Modify the query info at the bottom of the table page to include how long the
 query took.
-
-Change the data grid background to match the sidebar color.
 
 Hook up the add schema sidebar action button to logic that allows you to add a
 new schema.
