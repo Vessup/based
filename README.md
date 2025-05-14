@@ -4,8 +4,6 @@ Add a context menu when you right click on a cell in the data grid using the
 context menu component that allows you to copy the cell value. Use `onCellContextMenu`
 referenced in `docs/react-data-grid/README.md` to accomplish this.
 
-Stop the header cells in the data grid from being selected.
-
 Add a ... menu button to the button toolbar that is a dropdown
 menu with an option to copy the selected rows as a SQL insert statement. Add a
 separate component for this as the table page is getting too large.
@@ -37,9 +35,6 @@ Modify the query info at the bottom of the table page to include how long the
 query took.
 
 Change the data grid background to match the sidebar color.
-
-Don't show an outline if the cell is a header or checkbox cell, but make sure
-it is still shown on all other cells.
 
 Hook up the add schema sidebar action button to logic that allows you to add a
 new schema.

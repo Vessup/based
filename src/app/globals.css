@@ -131,3 +131,9 @@
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Set react-data-grid background to match sidebar */
+.rdg {
+  background-color: var(--sidebar) !important;
+  border-color: var(--sidebar-border) !important;
+}
