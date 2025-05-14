@@ -410,7 +410,8 @@ export async function insertTableRow(
 
     // Filter out columns that aren't in the provided data
     const columnNames = Object.keys(data);
-    const validColumns = columns.filter((col) =>
+    type Column = { column_name: string; data_type: string };
+    const validColumns = (columns as Column[]).filter((col: Column) =>
       columnNames.includes(col.column_name),
     );
 
@@ -422,17 +423,19 @@ export async function insertTableRow(
     }
 
     // Prepare column names and values for the INSERT query
-    const insertColumns = validColumns.map((col) => col.column_name);
-    const insertValues = validColumns.map((col) => data[col.column_name]);
+    const insertColumns = validColumns.map((col: Column) => col.column_name);
+    const insertValues = validColumns.map(
+      (col: Column) => data[col.column_name],
+    );
 
     // Execute the insert operation
     console.log(`Inserting into table ${tableName}:`, data);
 
     // Create an object with column names as keys and values as values
     const insertData: Record<string, unknown> = {};
-    validColumns.forEach((col) => {
+    for (const col of validColumns) {
       insertData[col.column_name] = data[col.column_name];
-    });
+    }
 
     // Use the SQL library's object insertion feature
     const result = await db`
@@ -442,7 +445,7 @@ export async function insertTableRow(
 
     return {
       success: true,
-      message: `Successfully added new record`,
+      message: "Successfully added new record",
       record: result[0],
     };
   } catch (error) {
@@ -547,7 +550,7 @@ export async function updateTableCell(
 
     return {
       success: true,
-      message: `Successfully updated cell`,
+      message: "Successfully updated cell",
     };
   } catch (error) {
     console.error(`Error updating cell in table ${tableName}:`, error);
