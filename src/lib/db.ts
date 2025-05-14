@@ -301,22 +301,33 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
       };
     }
 
+    // Ensure ids is a flat array of scalars (not objects/arrays)
+    const scalarIds = ids.map(id => {
+      if (typeof id === 'object' && id !== null && primaryKeyColumn in id) {
+        return id[primaryKeyColumn];
+      }
+      return id;
+    });
+
     // Execute the delete operation
     console.log(
-      `Deleting from table ${tableName} where ${primaryKeyColumn} IN (${ids.join(", ")})`,
+      `Deleting from table ${tableName} where ${primaryKeyColumn} IN (${scalarIds.join(", ")})`,
     );
 
-    // Let's see what db(tableName) actually produces
-    console.log("db(tableName):", db(tableName));
-    console.log("db(primaryKeyColumn):", db(primaryKeyColumn));
-    console.log("db(ids):", db(ids));
-
-    // Use the standard approach without the extra quotes
-    const result = await db`
-      DELETE FROM ${db(tableName)}
-      WHERE ${db(primaryKeyColumn)} IN ${db(ids)}
-      RETURNING ${db(primaryKeyColumn)};
-    `;
+    let result: Array<Record<string, unknown>>;
+    if (scalarIds.length === 1) {
+      result = await db`
+        DELETE FROM ${db(tableName)}
+        WHERE ${db(primaryKeyColumn)} = ${scalarIds[0]}
+        RETURNING ${db(primaryKeyColumn)};
+      `;
+    } else {
+      result = await db`
+        DELETE FROM ${db(tableName)}
+        WHERE ${db(primaryKeyColumn)} IN ${db(scalarIds)}
+        RETURNING ${db(primaryKeyColumn)};
+      `;
+    }
 
     return {
       success: true,
