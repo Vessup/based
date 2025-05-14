@@ -137,3 +137,22 @@
   background-color: var(--sidebar) !important;
   border-color: var(--sidebar-border) !important;
 }
+
+/* Make react-data-grid checkboxes smaller and centered */
+.rdg-cell [data-slot="checkbox"],
+.rdg-header-cell [data-slot="checkbox"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.rdg-cell .size-4,
+.rdg-header-cell .size-4 {
+  width: 1rem;
+  height: 1rem;
+  min-width: 0;
+  min-height: 0;
+}

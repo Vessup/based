@@ -6,6 +6,8 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import "react-data-grid/lib/styles.css";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { RenderCheckboxProps } from "react-data-grid";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -101,6 +103,14 @@ export function TableDataGrid({
         selectedRows={selectedRows}
         onSelectedRowsChange={onSelectedRowsChange}
         onRowsChange={onRowsChange}
+        renderers={{
+          renderCheckbox: ({ onChange, ...props }: RenderCheckboxProps) => (
+            <Checkbox
+              {...props}
+              onCheckedChange={(checked) => onChange(!!checked, false)}
+            />
+          )
+        }}
         className={clsx(
           theme === "light" && "rdg-light",
           "rounded-lg mt-4 flex-auto"
