@@ -16,12 +16,6 @@ the button toolbar on the right side.
 Use the `renderCheckbox` property on the data grid to use our custom checkbox
 component instead of the one that comes with react-data-grid.
 
-Add a license to the project that allows people to use the software for
-non-commercial use.
-
-Add a docker file that runs the app in a container. Add the containerized app
-as a new service in the docker-compose file on port 3001.
-
 Refactor the homepage to show (and allow you to edit) the database connection
 information.
 

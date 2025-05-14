@@ -50,6 +50,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import clsx from "clsx";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { TableDataGrid } from "@/components/DataTableGrid";
 
 // Define types for our data
 type ColumnInfo = {
@@ -364,7 +365,7 @@ export default function TablePage() {
       } as Column<Record<string, unknown>>);
     }
     return cols;
-  }, [columns, checkIsDateColumn, handleRowDelete]);
+  }, [columns, checkIsDateColumn]);
 
   // Handle row selection changes
   const handleRowSelectionChange = (selectedRows: Set<string>) => {
@@ -423,55 +424,19 @@ export default function TablePage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mt-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-          />
-        </Button>
-
-        <Button onClick={() => setIsAddDialogOpen(true)} size="sm">
-          <Plus className="h-4 w-4" />
-          Add Record
-        </Button>
-
-        {selectedRows.size > 0 && (
-          <Button
-            onClick={openDeleteDialog}
-            disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white"
-            size="sm"
-          >
-            <Trash2 className="h-4 w-4" />
-            {isDeleting
-              ? "Deleting..."
-              : `Delete Selected (${selectedRows.size})`}
-          </Button>
-        )}
-      </div>
-
-      <DataGrid
+      <TableDataGrid
         columns={gridColumns}
-        rows={data}
-        rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
+        data={data}
         selectedRows={selectedRows}
         onSelectedRowsChange={handleRowSelectionChange}
         onRowsChange={handleCellChange}
-        // renderCheckbox={props => Checkbox} TODO: add checkbox component
-        className={clsx(
-          theme === "light" && "rdg-light",
-          "rounded-lg mt-4 flex-auto",
-        )}
+        pagination={pagination}
+        onRefresh={handleRefresh}
+        onAddRecord={() => setIsAddDialogOpen(true)}
+        onDeleteSelected={openDeleteDialog}
+        refreshing={refreshing}
+        isDeleting={isDeleting}
       />
-
-      <div className="my-4 text-sm text-muted-foreground">
-        Showing {data.length} of {pagination.total} records
-      </div>
 
       <Toaster position="bottom-right" richColors />
 
