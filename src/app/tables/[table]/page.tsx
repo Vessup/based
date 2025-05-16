@@ -28,7 +28,7 @@ import {
 } from "@/lib/actions";
 import { format, isValid, parseISO } from "date-fns";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type Column,
@@ -115,6 +115,7 @@ export default function TablePage() {
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "10");
   const { theme } = useTheme();
+  const router = useRouter();
 
   // State for data
   const [loading, setLoading] = useState(true);
@@ -400,6 +401,13 @@ export default function TablePage() {
     handleCellEdit(rowKey, columnName, value);
   };
 
+  // Function to handle page change from pagination
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.set("page", String(newPage));
+    router.push(`?${params.toString()}`);
+  };
+
   return (
     <div className="w-full flex flex-col min-h-svh px-4 pt-2">
       <div className="flex items-center">
@@ -435,6 +443,10 @@ export default function TablePage() {
         onDeleteSelected={openDeleteDialog}
         refreshing={refreshing}
         isDeleting={isDeleting}
+        currentPage={pagination.page}
+        pageSize={pagination.pageSize}
+        pageCount={pagination.pageCount}
+        onPageChange={handlePageChange}
       />
 
       <Toaster position="bottom-right" richColors />

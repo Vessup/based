@@ -15,6 +15,14 @@ import {
 } from "@/components/ui/context-menu";
 import type { RenderCheckboxProps } from "react-data-grid";
 import { MoreMenuButton } from "./MoreMenuButton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -45,6 +53,10 @@ interface TableDataGridProps {
   onDeleteSelected: () => void;
   refreshing: boolean;
   isDeleting: boolean;
+  currentPage: number;
+  pageSize: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }
 
 export function TableDataGrid({
@@ -59,6 +71,10 @@ export function TableDataGrid({
   onDeleteSelected,
   refreshing,
   isDeleting,
+  currentPage,
+  pageSize,
+  pageCount,
+  onPageChange,
 }: TableDataGridProps) {
   const { theme } = useTheme();
 
@@ -127,39 +143,85 @@ export function TableDataGrid({
   return (
     <>
       <style>{customGridStyles}</style>
-      <div className="flex items-center gap-3 mt-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-          />
-        </Button>
-        <Button onClick={onAddRecord} size="sm">
-          <Plus className="h-4 w-4" />
-          Add Record
-        </Button>
-        {selectedRows.size > 0 && (
+      <div className="flex items-center justify-between mt-6">
+        <div className="flex items-center gap-3">
           <Button
-            onClick={onDeleteSelected}
-            disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            variant="outline"
             size="sm"
+            onClick={onRefresh}
+            disabled={refreshing}
           >
-            <Trash2 className="h-4 w-4" />
-            {isDeleting
-              ? "Deleting..."
-              : `Delete Selected (${selectedRows.size})`}
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
           </Button>
+          <Button onClick={onAddRecord} size="sm">
+            <Plus className="h-4 w-4" />
+            Add Record
+          </Button>
+          {selectedRows.size > 0 && (
+            <Button
+              onClick={onDeleteSelected}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              size="sm"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting
+                ? "Deleting..."
+                : `Delete Selected (${selectedRows.size})`}
+            </Button>
+          )}
+          <MoreMenuButton
+            selectedRows={selectedRows}
+            data={data}
+            columns={columns}
+          />
+        </div>
+        {pageCount > 1 && (
+          <div className="ml-auto">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={e => {
+                      e.preventDefault();
+                      if (currentPage > 1) onPageChange(currentPage - 1);
+                    }}
+                    aria-disabled={currentPage === 1}
+                    tabIndex={currentPage === 1 ? -1 : 0}
+                  />
+                </PaginationItem>
+                {Array.from({ length: pageCount }).map((_, i) => (
+                  <PaginationItem key={`page-${i + 1}`}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === i + 1}
+                      onClick={e => {
+                        e.preventDefault();
+                        if (currentPage !== i + 1) onPageChange(i + 1);
+                      }}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={e => {
+                      e.preventDefault();
+                      if (currentPage < pageCount) onPageChange(currentPage + 1);
+                    }}
+                    aria-disabled={currentPage === pageCount}
+                    tabIndex={currentPage === pageCount ? -1 : 0}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
-        <MoreMenuButton
-          selectedRows={selectedRows}
-          data={data}
-          columns={columns}
-        />
       </div>
       <ContextMenu>
         <ContextMenuTrigger asChild>
