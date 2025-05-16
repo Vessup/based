@@ -36,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -63,7 +64,6 @@ import {
   fetchDatabaseTables,
 } from "@/lib/actions";
 import { useParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(["public"]);
@@ -265,7 +265,7 @@ export function AppSidebar() {
               <Input
                 type="text"
                 value={tableSearch}
-                onChange={e => setTableSearch(e.target.value)}
+                onChange={(e) => setTableSearch(e.target.value)}
                 placeholder="Search tables..."
                 aria-label="Search tables"
               />
@@ -277,7 +277,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {tables
                   .filter((tableName) =>
-                    tableName.toLowerCase().includes(tableSearch.toLowerCase())
+                    tableName.toLowerCase().includes(tableSearch.toLowerCase()),
                   )
                   .map((tableName) => (
                     <SidebarMenuItem key={tableName}>

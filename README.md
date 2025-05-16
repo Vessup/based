@@ -14,9 +14,6 @@ the button toolbar on the right side.
 Refactor the homepage to show (and allow you to edit) the database connection
 information.
 
-Add a search input below the tables sidebar group header that allows you to
-filter the list of tables.
-
 Add a new page that allows you to write and run SQL queries and see the results
 below the query editor. The query editor should use a rich text editor so that
 the syntax can be highlighted appropriately. The results should use the same data

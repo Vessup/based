@@ -38,6 +38,7 @@ import {
 } from "react-data-grid";
 import { Toaster, toast } from "sonner";
 import "react-data-grid/lib/styles.css";
+import { TableDataGrid } from "@/components/TableDataGrid";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -49,7 +50,6 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { TableDataGrid } from "@/components/TableDataGrid";
 
 // Define types for our data
 type ColumnInfo = {

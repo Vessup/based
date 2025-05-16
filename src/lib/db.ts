@@ -302,8 +302,8 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
     }
 
     // Ensure ids is a flat array of scalars (not objects/arrays)
-    const scalarIds = ids.map(id => {
-      if (typeof id === 'object' && id !== null && primaryKeyColumn in id) {
+    const scalarIds = ids.map((id) => {
+      if (typeof id === "object" && id !== null && primaryKeyColumn in id) {
         return id[primaryKeyColumn];
       }
       return id;
