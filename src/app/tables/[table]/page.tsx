@@ -50,6 +50,9 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import NProgress from "nprogress";
+import "nprogress/nprogress.css";
+NProgress.configure({ showSpinner: false });
 
 // Define types for our data
 type ColumnInfo = {
@@ -107,6 +110,17 @@ function DateFormatter({ value }: { value: unknown }) {
   return String(value);
 }
 
+// Helper to start NProgress if not already started
+function startNProgress() {
+  if (!NProgress.isStarted()) {
+    NProgress.start();
+  }
+}
+
+function doneNProgress() {
+  NProgress.done();
+}
+
 export default function TablePage() {
   // Get route params and search params
   const params = useParams<{ table: string }>();
@@ -160,6 +174,7 @@ export default function TablePage() {
   // Handle delete selected rows
   const handleDeleteSelected = async () => {
     setIsDeleting(true);
+    startNProgress();
     try {
       const result = await deleteRows(tableName, Array.from(selectedRows));
 
@@ -177,6 +192,7 @@ export default function TablePage() {
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
+      doneNProgress();
     }
   };
 
@@ -185,6 +201,7 @@ export default function TablePage() {
     if (!rowToDelete) return;
 
     setIsDeleting(true);
+    startNProgress();
     try {
       const result = await deleteRows(tableName, [rowToDelete]);
 
@@ -201,6 +218,7 @@ export default function TablePage() {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
       setRowToDelete(null);
+      doneNProgress();
     }
   };
 
@@ -215,6 +233,7 @@ export default function TablePage() {
   // Handle adding a new record
   const handleAddRecord = async (data: Record<string, unknown>) => {
     setIsAddingRecord(true);
+    startNProgress();
     try {
       const result = await addTableRow(tableName, data);
 
@@ -230,6 +249,7 @@ export default function TablePage() {
     } finally {
       setIsAddingRecord(false);
       setIsAddDialogOpen(false);
+      doneNProgress();
     }
   };
 
@@ -239,6 +259,7 @@ export default function TablePage() {
     columnName: string,
     value: unknown,
   ) => {
+    startNProgress();
     try {
       const result = await updateTableCell(
         tableName,
@@ -268,6 +289,8 @@ export default function TablePage() {
       toast.error(`Error updating cell: ${error}`);
       // Reload the data to revert changes
       loadTableData();
+    } finally {
+      doneNProgress();
     }
   };
 
@@ -281,6 +304,8 @@ export default function TablePage() {
       } else {
         setLoading(true);
       }
+
+      startNProgress();
 
       try {
         const result = await fetchTableData(tableName, page, pageSize);
@@ -313,6 +338,7 @@ export default function TablePage() {
       } finally {
         setLoading(false);
         setRefreshing(false);
+        doneNProgress();
       }
     },
     [tableName, page, pageSize],
@@ -403,9 +429,11 @@ export default function TablePage() {
 
   // Function to handle page change from pagination
   const handlePageChange = (newPage: number) => {
+    startNProgress();
     const params = new URLSearchParams(Array.from(searchParams.entries()));
     params.set("page", String(newPage));
     router.push(`?${params.toString()}`);
+    // NProgress will be done after data loads
   };
 
   return (
@@ -536,6 +564,7 @@ function AddRecordDialog({
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    startNProgress();
     try {
       await onAddRecord(formData);
       onClose();
@@ -543,6 +572,7 @@ function AddRecordDialog({
       console.error("Error adding record:", error);
     } finally {
       setIsSubmitting(false);
+      doneNProgress();
     }
   };
 

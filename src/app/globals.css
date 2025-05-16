@@ -156,3 +156,11 @@
   min-width: 0;
   min-height: 0;
 }
+
+/* NProgress custom color: white bar */
+#nprogress .bar {
+  background: #fff !important;
+}
+#nprogress .peg {
+  box-shadow: 0 0 10px #fff, 0 0 5px #fff !important;
+}
