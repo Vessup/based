@@ -1,8 +1,5 @@
 # BASED
 
-Add paging to the data grid by using the pagination component and adding it to
-the button toolbar on the right side.
-
 Refactor the homepage to show (and allow you to edit) the database connection
 information.
 

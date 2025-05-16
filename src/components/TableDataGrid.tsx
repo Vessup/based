@@ -23,6 +23,13 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -57,6 +64,7 @@ interface TableDataGridProps {
   pageSize: number;
   pageCount: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
 }
 
 export function TableDataGrid({
@@ -75,6 +83,7 @@ export function TableDataGrid({
   pageSize,
   pageCount,
   onPageChange,
+  onPageSizeChange,
 }: TableDataGridProps) {
   const { theme } = useTheme();
 
@@ -178,50 +187,67 @@ export function TableDataGrid({
             columns={columns}
           />
         </div>
-        {pageCount > 1 && (
-          <div className="ml-auto">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={e => {
-                      e.preventDefault();
-                      if (currentPage > 1) onPageChange(currentPage - 1);
-                    }}
-                    aria-disabled={currentPage === 1}
-                    tabIndex={currentPage === 1 ? -1 : 0}
-                  />
-                </PaginationItem>
-                {Array.from({ length: pageCount }).map((_, i) => (
-                  <PaginationItem key={`page-${i + 1}`}>
-                    <PaginationLink
-                      href="#"
-                      isActive={currentPage === i + 1}
-                      onClick={e => {
-                        e.preventDefault();
-                        if (currentPage !== i + 1) onPageChange(i + 1);
-                      }}
-                    >
-                      {i + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={e => {
-                      e.preventDefault();
-                      if (currentPage < pageCount) onPageChange(currentPage + 1);
-                    }}
-                    aria-disabled={currentPage === pageCount}
-                    tabIndex={currentPage === pageCount ? -1 : 0}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Select
+              value={String(pageSize || 20)}
+              onValueChange={v => onPageSizeChange(Number(v))}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue>{`${pageSize || 20} per page`}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="20">20 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
+                <SelectItem value="250">250 per page</SelectItem>
+                <SelectItem value="500">500 per page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={e => {
+                    e.preventDefault();
+                    if (currentPage > 1) onPageChange(currentPage - 1);
+                  }}
+                  aria-disabled={currentPage === 1}
+                  tabIndex={currentPage === 1 ? -1 : 0}
+                />
+              </PaginationItem>
+              {Array.from({ length: pageCount }).map((_, i) => (
+                <PaginationItem key={`page-${i + 1}`}>
+                  <PaginationLink
+                    href="#"
+                    isActive={currentPage === i + 1}
+                    onClick={e => {
+                      e.preventDefault();
+                      if (currentPage !== i + 1) onPageChange(i + 1);
+                    }}
+                    aria-disabled={pageCount === 1}
+                    tabIndex={pageCount === 1 ? -1 : 0}
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={e => {
+                    e.preventDefault();
+                    if (currentPage < pageCount) onPageChange(currentPage + 1);
+                  }}
+                  aria-disabled={currentPage === pageCount}
+                  tabIndex={currentPage === pageCount ? -1 : 0}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
       <ContextMenu>
         <ContextMenuTrigger asChild>

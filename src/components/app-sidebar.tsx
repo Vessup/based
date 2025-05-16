@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import NProgress from "nprogress";
 
 import {
   AlertDialog,
@@ -111,6 +112,7 @@ export function AppSidebar() {
   const loadTables = useCallback(
     async (schema = selectedSchema) => {
       try {
+        NProgress.start();
         setRefreshing(true);
         const result = await fetchDatabaseTables(schema);
 
@@ -129,6 +131,7 @@ export function AppSidebar() {
       } finally {
         setLoading(false);
         setRefreshing(false);
+        NProgress.done();
       }
     },
     [selectedSchema],

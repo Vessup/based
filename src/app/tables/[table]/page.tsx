@@ -127,7 +127,7 @@ export default function TablePage() {
   const searchParams = useSearchParams();
   const tableName = params.table as string;
   const page = Number(searchParams.get("page") || "1");
-  const pageSize = Number(searchParams.get("pageSize") || "10");
+  const pageSize = Number(searchParams.get("pageSize") || "20");
   const { theme } = useTheme();
   const router = useRouter();
 
@@ -475,6 +475,13 @@ export default function TablePage() {
         pageSize={pagination.pageSize}
         pageCount={pagination.pageCount}
         onPageChange={handlePageChange}
+        onPageSizeChange={(newPageSize) => {
+          startNProgress();
+          const params = new URLSearchParams(Array.from(searchParams.entries()));
+          params.set("pageSize", String(newPageSize));
+          params.set("page", "1");
+          router.push(`?${params.toString()}`);
+        }}
       />
 
       <Toaster position="bottom-right" richColors />
