@@ -28,7 +28,7 @@ import {
 } from "@/lib/actions";
 import { format, isValid, parseISO } from "date-fns";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type Column,
@@ -477,7 +477,9 @@ export default function TablePage() {
         onPageChange={handlePageChange}
         onPageSizeChange={(newPageSize) => {
           startNProgress();
-          const params = new URLSearchParams(Array.from(searchParams.entries()));
+          const params = new URLSearchParams(
+            Array.from(searchParams.entries()),
+          );
           params.set("pageSize", String(newPageSize));
           params.set("page", "1");
           router.push(`?${params.toString()}`);

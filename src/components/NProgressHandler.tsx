@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import NProgress from "nprogress";
+import { useEffect, useRef } from "react";
 import "nprogress/nprogress.css";
 
 NProgress.configure({ showSpinner: false });
@@ -13,7 +13,10 @@ export function NProgressHandler() {
 
   useEffect(() => {
     // Only trigger on actual navigation
-    if (previousPath.current !== null && previousPath.current !== pathname + searchParams.toString()) {
+    if (
+      previousPath.current !== null &&
+      previousPath.current !== pathname + searchParams.toString()
+    ) {
       NProgress.start();
       // Simulate a short delay for demo; in real apps, you may want to tie this to data fetching
       setTimeout(() => {
@@ -25,4 +28,4 @@ export function NProgressHandler() {
   }, [pathname, searchParams]);
 
   return null;
-} 
+}

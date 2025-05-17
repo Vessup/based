@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import { Plus, RefreshCw, Trash2, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import React from "react";
 import { type Column, DataGrid } from "react-data-grid";
@@ -13,15 +13,13 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import type { RenderCheckboxProps } from "react-data-grid";
-import { MoreMenuButton } from "./MoreMenuButton";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationLink,
-  PaginationPrevious,
   PaginationNext,
+  PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
   Select,
@@ -30,6 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { RenderCheckboxProps } from "react-data-grid";
+import { MoreMenuButton } from "./MoreMenuButton";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -108,7 +108,11 @@ export function TableDataGrid({
       event: React.MouseEvent,
     ) => {
       // Only handle data cells
-      const checkboxKeys = ["select-row", "rdg-select-row", "rdg-select-column"];
+      const checkboxKeys = [
+        "select-row",
+        "rdg-select-row",
+        "rdg-select-column",
+      ];
       if (!args.row) return;
       if (checkboxKeys.includes(args.column.key)) return;
 
@@ -191,7 +195,7 @@ export function TableDataGrid({
           <div className="flex items-center gap-1">
             <Select
               value={String(pageSize || 20)}
-              onValueChange={v => onPageSizeChange(Number(v))}
+              onValueChange={(v) => onPageSizeChange(Number(v))}
             >
               <SelectTrigger size="sm">
                 <SelectValue>{`${pageSize || 20} per page`}</SelectValue>
@@ -210,7 +214,7 @@ export function TableDataGrid({
               <PaginationItem>
                 <PaginationPrevious
                   href="#"
-                  onClick={e => {
+                  onClick={(e) => {
                     e.preventDefault();
                     if (currentPage > 1) onPageChange(currentPage - 1);
                   }}
@@ -223,7 +227,7 @@ export function TableDataGrid({
                   <PaginationLink
                     href="#"
                     isActive={currentPage === i + 1}
-                    onClick={e => {
+                    onClick={(e) => {
                       e.preventDefault();
                       if (currentPage !== i + 1) onPageChange(i + 1);
                     }}
@@ -237,7 +241,7 @@ export function TableDataGrid({
               <PaginationItem>
                 <PaginationNext
                   href="#"
-                  onClick={e => {
+                  onClick={(e) => {
                     e.preventDefault();
                     if (currentPage < pageCount) onPageChange(currentPage + 1);
                   }}

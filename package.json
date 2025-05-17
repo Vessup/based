@@ -14,6 +14,7 @@
     "seedDb": "bun scripts/seedDb.ts"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.8.0",
     "@logtape/logtape": "^0.9.1",
     "@radix-ui/react-alert-dialog": "^1.1.13",
     "@radix-ui/react-checkbox": "^1.3.1",

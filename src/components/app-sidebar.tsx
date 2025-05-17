@@ -12,8 +12,8 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
 import NProgress from "nprogress";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   AlertDialog,
