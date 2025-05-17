@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import type { RenderCheckboxProps } from "react-data-grid";
 import { MoreMenuButton } from "./MoreMenuButton";
+import { ColumnsMenuButton } from "./ColumnsMenuButton";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -97,6 +98,16 @@ export function TableDataGrid({
   const [contextMenuValue, setContextMenuValue] = React.useState<string>("");
 
   const gridRef = React.useRef<HTMLDivElement>(null);
+
+  // State for visible columns
+  const [visibleColumns, setVisibleColumns] = React.useState(() => columns.map(col => col.key));
+  React.useEffect(() => {
+    setVisibleColumns(columns.map(col => col.key));
+  }, [columns]);
+  const visibleCols = React.useMemo(() =>
+    columns.filter(col => visibleColumns.includes(col.key)),
+    [columns, visibleColumns]
+  );
 
   // Handler for right-click on a cell
   const handleCellContextMenu = React.useCallback(
@@ -185,6 +196,11 @@ export function TableDataGrid({
                 : `Delete Selected (${selectedRows.size})`}
             </Button>
           )}
+          <ColumnsMenuButton
+            allColumns={columns}
+            visibleColumns={visibleColumns}
+            onChange={setVisibleColumns}
+          />
           <MoreMenuButton
             selectedRows={selectedRows}
             data={data}
@@ -257,7 +273,7 @@ export function TableDataGrid({
         <ContextMenuTrigger asChild>
           <div style={{ position: "relative" }} ref={gridRef}>
             <DataGrid
-              columns={enhancedColumns}
+              columns={enhancedColumns.filter(col => visibleColumns.includes(col.key))}
               rows={data}
               rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
               selectedRows={selectedRows}
