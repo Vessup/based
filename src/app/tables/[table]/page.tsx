@@ -121,6 +121,26 @@ function doneNProgress() {
   NProgress.done();
 }
 
+function parseFiltersFromQuery(searchParams: URLSearchParams, columns: ColumnInfo[]) {
+  const filtersParam = searchParams.get("filters");
+  if (!filtersParam) return [{ id: Math.random().toString(36).slice(2), column: columns[0]?.column_name || "", operator: "equals", value: "" }];
+  return filtersParam.split(",").map((f) => {
+    const [column, operator, ...rest] = f.split(":");
+    return {
+      id: Math.random().toString(36).slice(2),
+      column,
+      operator: operator || "equals",
+      value: rest.join(":") || "",
+    };
+  });
+}
+
+function serializeFiltersToQuery(filters) {
+  return filters
+    .map(f => `${encodeURIComponent(f.column)}:${encodeURIComponent(f.operator)}:${encodeURIComponent(f.value)}`)
+    .join(",");
+}
+
 export default function TablePage() {
   // Get route params and search params
   const params = useParams<{ table: string }>();
@@ -156,6 +176,23 @@ export default function TablePage() {
   // State for adding new record
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAddingRecord, setIsAddingRecord] = useState(false);
+
+  // State for filters and filter visibility, synced with URL
+  const [showFilters, setShowFilters] = useState(searchParams.get("showFilters") === "1");
+  const [filters, setFilters] = useState(() => parseFiltersFromQuery(searchParams, columns));
+
+  // Sync filters to URL
+  useEffect(() => {
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    if (showFilters) {
+      params.set("showFilters", "1");
+    } else {
+      params.delete("showFilters");
+    }
+    params.set("filters", serializeFiltersToQuery(filters));
+    router.replace(`?${params.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, showFilters]);
 
   // Open delete confirmation dialog for selected rows
   const openDeleteDialog = () => {
@@ -484,6 +521,10 @@ export default function TablePage() {
           params.set("page", "1");
           router.push(`?${params.toString()}`);
         }}
+        filters={filters}
+        onFiltersChange={setFilters}
+        showFilters={showFilters}
+        onShowFiltersChange={setShowFilters}
       />
 
       <Toaster position="bottom-right" richColors />

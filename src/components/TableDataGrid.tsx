@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import { MoreHorizontal, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, Trash2, ListFilter } from "lucide-react";
 import { useTheme } from "next-themes";
 import React from "react";
 import { type Column, DataGrid } from "react-data-grid";
@@ -66,6 +66,10 @@ interface TableDataGridProps {
   pageCount: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
+  filters: { id: string; column: string; operator: string; value: string }[];
+  onFiltersChange: (filters: { id: string; column: string; operator: string; value: string }[]) => void;
+  showFilters: boolean;
+  onShowFiltersChange: (show: boolean) => void;
 }
 
 export function TableDataGrid({
@@ -85,6 +89,10 @@ export function TableDataGrid({
   pageCount,
   onPageChange,
   onPageSizeChange,
+  filters,
+  onFiltersChange,
+  showFilters,
+  onShowFiltersChange,
 }: TableDataGridProps) {
   const { theme } = useTheme();
 
@@ -108,6 +116,40 @@ export function TableDataGrid({
     columns.filter(col => visibleColumns.includes(col.key)),
     [columns, visibleColumns]
   );
+
+  // Operators
+  const operators = [
+    { value: "equals", label: "equals" },
+    { value: "contains", label: "contains" },
+    { value: "startsWith", label: "starts with" },
+    { value: "endsWith", label: "ends with" },
+  ];
+
+  // Filtered data
+  const filteredData = React.useMemo(() => {
+    if (!showFilters || filters.length === 0) return data;
+    return data.filter((row) => {
+      return filters.every((filter) => {
+        const cell = row[filter.column];
+        if (filter.value === "") return true;
+        if (cell == null) return false;
+        const cellStr = String(cell).toLowerCase();
+        const val = filter.value.toLowerCase();
+        switch (filter.operator) {
+          case "equals":
+            return cellStr === val;
+          case "contains":
+            return cellStr.includes(val);
+          case "startsWith":
+            return cellStr.startsWith(val);
+          case "endsWith":
+            return cellStr.endsWith(val);
+          default:
+            return true;
+        }
+      });
+    });
+  }, [data, filters, showFilters]);
 
   // Handler for right-click on a cell
   const handleCellContextMenu = React.useCallback(
@@ -178,6 +220,13 @@ export function TableDataGrid({
             <RefreshCw
               className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
+          </Button>
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => onShowFiltersChange(!showFilters)}
+          >
+            <ListFilter className="h-4 w-4 mr-2" /> Filters
           </Button>
           <Button onClick={onAddRecord} size="sm">
             <Plus className="h-4 w-4" />
@@ -333,12 +382,94 @@ export function TableDataGrid({
           </Pagination>
         </div>
       </div>
+      {showFilters && (
+        <div className="flex flex-col gap-2 bg-muted/40 px-4 py-2 rounded-b-md border-b border-border">
+          {filters.map((filter, i) => (
+            <div key={filter.id} className="flex items-center gap-1">
+              {i === 0 ? (
+                <span className="text-xs text-muted-foreground mr-1">where</span>
+              ) : null}
+              <select
+                className="rounded bg-background border px-2 py-1 text-xs"
+                value={filter.column}
+                onChange={e => {
+                  const newFilters = [...filters];
+                  newFilters[i].column = e.target.value;
+                  onFiltersChange(newFilters);
+                }}
+              >
+                {columns
+                  .filter(col => !["select-row", "rdg-select-row", "rdg-select-column"].includes(col.key))
+                  .map(col => (
+                    <option key={col.key} value={col.key}>{col.name || col.key}</option>
+                  ))}
+              </select>
+              <select
+                className="rounded bg-background border px-2 py-1 text-xs"
+                value={filter.operator}
+                onChange={e => {
+                  const newFilters = [...filters];
+                  newFilters[i].operator = e.target.value;
+                  onFiltersChange(newFilters);
+                }}
+              >
+                {operators.map(op => (
+                  <option key={op.value} value={op.value}>{op.label}</option>
+                ))}
+              </select>
+              <input
+                className="rounded bg-background border px-2 py-1 text-xs min-w-24"
+                value={filter.value}
+                onChange={e => {
+                  const newFilters = [...filters];
+                  newFilters[i].value = e.target.value;
+                  onFiltersChange(newFilters);
+                }}
+                placeholder="value"
+              />
+              <button
+                className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => onFiltersChange(filters.filter((_, idx) => idx !== i))}
+                disabled={filters.length === 1}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs px-2"
+            onClick={() => {
+              const dataCols = columns.filter(col => !["select-row", "rdg-select-row", "rdg-select-column"].includes(col.key));
+              onFiltersChange([
+                ...filters,
+                { id: Math.random().toString(36).slice(2), column: dataCols[0]?.key || "", operator: "equals", value: "" }
+              ]);
+            }}
+          >
+            + Add filter
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs px-2"
+            onClick={() => {
+              const dataCols = columns.filter(col => !["select-row", "rdg-select-row", "rdg-select-column"].includes(col.key));
+              onFiltersChange([{ id: Math.random().toString(36).slice(2), column: dataCols[0]?.key || "", operator: "equals", value: "" }]);
+            }}
+          >
+            Clear filters
+          </Button>
+        </div>
+      )}
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div style={{ position: "relative" }} ref={gridRef}>
             <DataGrid
               columns={enhancedColumns.filter(col => visibleColumns.includes(col.key))}
-              rows={data}
+              rows={filteredData}
               rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
               selectedRows={selectedRows}
               onSelectedRowsChange={onSelectedRowsChange}
