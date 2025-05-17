@@ -238,22 +238,86 @@ export function TableDataGrid({
                   tabIndex={currentPage === 1 ? -1 : 0}
                 />
               </PaginationItem>
-              {Array.from({ length: pageCount }).map((_, i) => (
-                <PaginationItem key={`page-${i + 1}`}>
-                  <PaginationLink
-                    href="#"
-                    isActive={currentPage === i + 1}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage !== i + 1) onPageChange(i + 1);
-                    }}
-                    aria-disabled={pageCount === 1}
-                    tabIndex={pageCount === 1 ? -1 : 0}
-                  >
-                    {i + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {/* Smart pagination window */}
+              {(() => {
+                const pages = [];
+                const window = 2; // pages before/after current
+                const total = pageCount;
+                const start = Math.max(2, currentPage - window);
+                const end = Math.min(total - 1, currentPage + window);
+                // Always show first page
+                pages.push(
+                  <PaginationItem key={1}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === 1}
+                      onClick={e => {
+                        e.preventDefault();
+                        if (currentPage !== 1) onPageChange(1);
+                      }}
+                      aria-disabled={pageCount === 1}
+                      tabIndex={pageCount === 1 ? -1 : 0}
+                    >
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+                // Ellipsis if needed
+                if (start > 2) {
+                  pages.push(
+                    <PaginationItem key="start-ellipsis">
+                      <span className="px-2">…</span>
+                    </PaginationItem>
+                  );
+                }
+                // Window of pages
+                for (let i = start; i <= end; i++) {
+                  pages.push(
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        href="#"
+                        isActive={currentPage === i}
+                        onClick={e => {
+                          e.preventDefault();
+                          if (currentPage !== i) onPageChange(i);
+                        }}
+                        aria-disabled={pageCount === 1}
+                        tabIndex={pageCount === 1 ? -1 : 0}
+                      >
+                        {i}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                // Ellipsis if needed
+                if (end < total - 1) {
+                  pages.push(
+                    <PaginationItem key="end-ellipsis">
+                      <span className="px-2">…</span>
+                    </PaginationItem>
+                  );
+                }
+                // Always show last page if more than 1
+                if (total > 1) {
+                  pages.push(
+                    <PaginationItem key={total}>
+                      <PaginationLink
+                        href="#"
+                        isActive={currentPage === total}
+                        onClick={e => {
+                          e.preventDefault();
+                          if (currentPage !== total) onPageChange(total);
+                        }}
+                        aria-disabled={pageCount === 1}
+                        tabIndex={pageCount === 1 ? -1 : 0}
+                      >
+                        {total}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                return pages;
+              })()}
               <PaginationItem>
                 <PaginationNext
                   href="#"
