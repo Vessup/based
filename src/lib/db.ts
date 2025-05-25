@@ -156,12 +156,35 @@ export async function getTables(schema = "public") {
  */
 export async function getTableColumns(tableName: string) {
   try {
-    // Using tagged template literals for safe parameter passing
+    // Enhanced query to include foreign key info
     const result = await db`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = ${tableName}
-      ORDER BY ordinal_position;
+      SELECT
+        c.column_name,
+        c.data_type,
+        c.is_nullable,
+        fk_info.foreign_table_name,
+        fk_info.foreign_column_name
+      FROM information_schema.columns c
+      LEFT JOIN (
+        SELECT
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage ccu
+          ON ccu.constraint_name = tc.constraint_name
+          AND ccu.table_schema = tc.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND kcu.table_name = ${tableName}
+          AND kcu.table_schema = 'public'
+      ) AS fk_info
+      ON c.column_name = fk_info.column_name
+      WHERE c.table_name = ${tableName}
+        AND c.table_schema = 'public'
+      ORDER BY c.ordinal_position;
     `;
 
     return result;

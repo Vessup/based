@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import { MoreHorizontal, Plus, RefreshCw, Trash2, ListFilter } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, Trash2, ListFilter, ArrowUpRight } from "lucide-react";
 import { useTheme } from "next-themes";
 import React from "react";
 import { type Column, DataGrid } from "react-data-grid";
@@ -31,6 +31,7 @@ import {
 import type { RenderCheckboxProps } from "react-data-grid";
 import { MoreMenuButton } from "./MoreMenuButton";
 import { ColumnsMenuButton } from "./ColumnsMenuButton";
+import { useRouter } from "next/navigation";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -95,6 +96,7 @@ export function TableDataGrid({
   onShowFiltersChange,
 }: TableDataGridProps) {
   const { theme } = useTheme();
+  const router = useRouter();
 
   // Custom context menu open state and position for data cells
   const [contextMenuState, setContextMenuState] = React.useState<{
@@ -192,13 +194,44 @@ export function TableDataGrid({
     setContextMenuState(null);
   }, [contextMenuState]);
 
-  // Enhance columns to add cellClass/headerCellClass for outline control
-  const enhancedColumns = columns.map((col) => {
+  // Enhance columns to add cellClass/headerCellClass for outline control and custom FK formatter
+  const enhancedColumns = columns.map((col: Column<Record<string, unknown>> & { foreign_table_name?: string; foreign_column_name?: string }) => {
     // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
     const isCheckbox =
       col.key === "select-row" ||
       col.key === "rdg-select-row" ||
       col.key === "rdg-select-column";
+
+    // If this column is a foreign key, add a custom formatter
+    if (col.foreign_table_name && col.foreign_column_name) {
+      return {
+        ...col,
+        cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
+        headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+        formatter: ({ row }: { row: Record<string, unknown> }) => {
+          const value = row[col.key];
+          if (value === undefined || value === null || value === "") {
+            return <span className="text-gray-400">NULL</span>;
+          }
+          return (
+            <span className="inline-flex items-center gap-1">
+              {String(value)}
+              <ArrowUpRight
+                className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
+                size={14}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(
+                    `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`
+                  );
+                }}
+                aria-label={`Go to ${col.foreign_table_name}`}
+              />
+            </span>
+          );
+        },
+      };
+    }
     return {
       ...col,
       cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),

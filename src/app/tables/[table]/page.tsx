@@ -59,6 +59,8 @@ type ColumnInfo = {
   column_name: string;
   data_type: string;
   is_nullable: string;
+  foreign_table_name?: string;
+  foreign_column_name?: string;
 };
 
 type PaginationInfo = {
@@ -121,10 +123,21 @@ function doneNProgress() {
   NProgress.done();
 }
 
-function parseFiltersFromQuery(searchParams: URLSearchParams, columns: ColumnInfo[]) {
+function parseFiltersFromQuery(
+  searchParams: URLSearchParams,
+  columns: ColumnInfo[]
+): { id: string; column: string; operator: string; value: string }[] {
   const filtersParam = searchParams.get("filters");
-  if (!filtersParam) return [{ id: Math.random().toString(36).slice(2), column: columns[0]?.column_name || "", operator: "equals", value: "" }];
-  return filtersParam.split(",").map((f) => {
+  if (!filtersParam)
+    return [
+      {
+        id: Math.random().toString(36).slice(2),
+        column: columns[0]?.column_name || "",
+        operator: "equals",
+        value: "",
+      },
+    ];
+  return filtersParam.split(",").map((f: string) => {
     const [column, operator, ...rest] = f.split(":");
     return {
       id: Math.random().toString(36).slice(2),
@@ -135,9 +148,15 @@ function parseFiltersFromQuery(searchParams: URLSearchParams, columns: ColumnInf
   });
 }
 
-function serializeFiltersToQuery(filters) {
+function serializeFiltersToQuery(
+  filters: { id: string; column: string; operator: string; value: string }[]
+) {
   return filters
-    .map(f => `${encodeURIComponent(f.column)}:${encodeURIComponent(f.operator)}:${encodeURIComponent(f.value)}`)
+    .map((f) =>
+      `${encodeURIComponent(f.column)}:${encodeURIComponent(
+        f.operator
+      )}:${encodeURIComponent(f.value)}`
+    )
     .join(",");
 }
 
@@ -192,7 +211,7 @@ export default function TablePage() {
     params.set("filters", serializeFiltersToQuery(filters));
     router.replace(`?${params.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, showFilters]);
+  }, [filters, showFilters, router.replace, searchParams.entries]);
 
   // Open delete confirmation dialog for selected rows
   const openDeleteDialog = () => {
@@ -369,6 +388,8 @@ export default function TablePage() {
           setColumns(result.columns);
           setPagination(result.data.pagination);
           setError(null);
+
+          console.log("Loaded columns:", result.columns);
         }
       } catch (err) {
         setError(`Failed to load table data: ${err}`);
@@ -420,12 +441,16 @@ export default function TablePage() {
       cols.push({
         key: column.column_name,
         name: column.column_name,
-        // editor: isDate ? DateEditor : textEditor,
         width: "max-content",
         resizable: true,
         formatter: isDate ? DateFormatter : undefined,
         editable: true,
-      } as Column<Record<string, unknown>>);
+        foreign_table_name: column.foreign_table_name,
+        foreign_column_name: column.foreign_column_name,
+      } as Column<Record<string, unknown>> & {
+        foreign_table_name?: string;
+        foreign_column_name?: string;
+      });
     }
     return cols;
   }, [columns, checkIsDateColumn]);

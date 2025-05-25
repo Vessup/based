@@ -22,3 +22,8 @@ new schema.
 
 Hook up the add table sidebar action button to logic that adds a create table
 query to a new SQL editor tab.
+
+Add a filter icon button that allows you to add 
+
+For a cell value that is a foreign key pointing to another table, add a small arrow icon after the value that when you click on it navigates
+to the page for that table with a filter on the foreign key ID so that only the related row is displayed.
