@@ -258,15 +258,17 @@ export function TableDataGrid({
         col.key === "rdg-select-column";
 
       // Add custom header renderer for sortable columns (skip checkbox columns)
-      // No need to memoize since we're already inside a useMemo
-      const headerRenderer = isCheckbox ? undefined : () => (
-        <SortableHeader
-          column={{ key: col.key, name: col.name || col.key }}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={onColumnSort}
-        />
-      );
+      // React-data-grid expects headerRenderer to be a React component, not a function returning JSX
+      const headerRenderer = isCheckbox ? undefined : function HeaderRenderer() {
+        return (
+          <SortableHeader
+            column={{ key: col.key, name: col.name || col.key }}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={onColumnSort}
+          />
+        );
+      };
 
       // If this column is a foreign key, add a custom formatter
       if (col.foreign_table_name && col.foreign_column_name) {
