@@ -64,7 +64,7 @@ interface SortableHeaderProps {
   onSort: (columnKey: string) => void;
 }
 
-function SortableHeader({ column, sortColumn, sortDirection, onSort }: SortableHeaderProps) {
+const SortableHeader = React.memo(function SortableHeader({ column, sortColumn, sortDirection, onSort }: SortableHeaderProps) {
   const isCurrentSort = sortColumn === column.key;
   
   return (
@@ -84,7 +84,7 @@ function SortableHeader({ column, sortColumn, sortDirection, onSort }: SortableH
       )}
     </div>
   );
-}
+});
 
 interface TableDataGridProps {
   columns: Column<Record<string, unknown>>[];
@@ -244,7 +244,7 @@ export function TableDataGrid({
   }, [contextMenuState]);
 
   // Enhance columns to add cellClass/headerCellClass for outline control and custom FK formatter
-  const enhancedColumns = columns.map(
+  const enhancedColumns = React.useMemo(() => columns.map(
     (
       col: Column<Record<string, unknown>> & {
         foreign_table_name?: string;
@@ -258,13 +258,16 @@ export function TableDataGrid({
         col.key === "rdg-select-column";
 
       // Add custom header renderer for sortable columns (skip checkbox columns)
-      const headerRenderer = isCheckbox ? undefined : () => (
-        <SortableHeader
-          column={{ key: col.key, name: col.name || col.key }}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={onColumnSort}
-        />
+      // Memoized to prevent recreation on every render
+      const headerRenderer = React.useMemo(() => 
+        isCheckbox ? undefined : () => (
+          <SortableHeader
+            column={{ key: col.key, name: col.name || col.key }}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={onColumnSort}
+          />
+        ), [isCheckbox, col.key, col.name, sortColumn, sortDirection, onColumnSort]
       );
 
       // If this column is a foreign key, add a custom formatter
@@ -305,7 +308,7 @@ export function TableDataGrid({
         headerRenderer,
       };
     },
-  );
+  ), [columns, sortColumn, sortDirection, onColumnSort, router]);
 
   return (
     <>

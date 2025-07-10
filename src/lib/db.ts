@@ -339,17 +339,41 @@ export async function getTableData(
     let query;
     
     if (sortColumn && sortDirection) {
-      // Validate sort direction
+      // Validate sort direction - safer approach without db.unsafe()
       const direction = sortDirection.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
       
-      // Get records with pagination and sorting
-      query = await db`
-        SELECT *
-        FROM ${db(tableName)}
-        ORDER BY ${db(sortColumn)} ${db.unsafe(direction)}
-        LIMIT ${pageSize}
-        OFFSET ${offset}
-      `;
+      // Validate that sortColumn exists in the table to prevent SQL errors
+      const columns = await getTableColumns(tableName);
+      const validColumn = columns.find(c => c.column_name === sortColumn);
+      if (!validColumn) {
+        console.warn(`Invalid sort column: ${sortColumn}`);
+        // Fall back to query without sorting
+        query = await db`
+          SELECT *
+          FROM ${db(tableName)}
+          LIMIT ${pageSize}
+          OFFSET ${offset}
+        `;
+      } else {
+        // Get records with pagination and sorting - use template literal for direction
+        if (direction === 'DESC') {
+          query = await db`
+            SELECT *
+            FROM ${db(tableName)}
+            ORDER BY ${db(sortColumn)} DESC
+            LIMIT ${pageSize}
+            OFFSET ${offset}
+          `;
+        } else {
+          query = await db`
+            SELECT *
+            FROM ${db(tableName)}
+            ORDER BY ${db(sortColumn)} ASC
+            LIMIT ${pageSize}
+            OFFSET ${offset}
+          `;
+        }
+      }
     } else {
       // Get records with pagination only
       query = await db`

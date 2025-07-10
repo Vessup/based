@@ -422,33 +422,39 @@ export default function TablePage() {
 
   // Function to handle column sorting
   const handleColumnSort = useCallback((columnKey: string) => {
-    const params = new URLSearchParams(Array.from(searchParams.entries()));
-    
-    // Implement 3-state cycle: none -> desc -> asc -> none
-    let newSortDirection: 'desc' | 'asc' | undefined;
-    
-    if (sortColumn === columnKey) {
-      // Same column clicked, cycle through states
-      if (sortDirection === 'desc') {
-        newSortDirection = 'asc';
-      } else if (sortDirection === 'asc') {
-        // Remove sorting
-        params.delete('sortColumn');
-        params.delete('sortDirection');
-        router.push(`?${params.toString()}`);
-        return;
+    try {
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      
+      // Implement 3-state cycle: none -> desc -> asc -> none
+      let newSortDirection: 'desc' | 'asc' | undefined;
+      
+      if (sortColumn === columnKey) {
+        // Same column clicked, cycle through states
+        if (sortDirection === 'desc') {
+          newSortDirection = 'asc';
+        } else if (sortDirection === 'asc') {
+          // Remove sorting
+          params.delete('sortColumn');
+          params.delete('sortDirection');
+          router.push(`?${params.toString()}`);
+          return;
+        } else {
+          newSortDirection = 'desc';
+        }
       } else {
+        // Different column clicked, start with desc
         newSortDirection = 'desc';
       }
-    } else {
-      // Different column clicked, start with desc
-      newSortDirection = 'desc';
+      
+      params.set('sortColumn', columnKey);
+      params.set('sortDirection', newSortDirection);
+      params.set('page', '1'); // Reset to first page when sorting
+      router.push(`?${params.toString()}`);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // Optionally show user-friendly error message
+      // toast.error('Failed to sort column. Please try again.');
     }
-    
-    params.set('sortColumn', columnKey);
-    params.set('sortDirection', newSortDirection);
-    params.set('page', '1'); // Reset to first page when sorting
-    router.push(`?${params.toString()}`);
   }, [sortColumn, sortDirection, searchParams, router]);
 
   // Fetch data on component mount and when params change
