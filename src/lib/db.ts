@@ -315,11 +315,11 @@ export async function getTableColumns(tableName: string) {
  * @returns Object containing records and pagination info
  */
 export async function getTableData(
-  tableName: string, 
-  page = 1, 
+  tableName: string,
+  page = 1,
   pageSize = 10,
   sortColumn?: string,
-  sortDirection?: 'asc' | 'desc'
+  sortDirection?: "asc" | "desc",
 ) {
   try {
     // Calculate offset
@@ -336,15 +336,15 @@ export async function getTableData(
     const total = Number(countResult[0].total);
 
     // Build the base query
-    let query;
-    
+    let query: string;
+
     if (sortColumn && sortDirection) {
       // Validate sort direction - safer approach without db.unsafe()
-      const direction = sortDirection.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-      
+      const direction = sortDirection.toLowerCase() === "desc" ? "DESC" : "ASC";
+
       // Validate that sortColumn exists in the table to prevent SQL errors
       const columns = await getTableColumns(tableName);
-      const validColumn = columns.find(c => c.column_name === sortColumn);
+      const validColumn = columns.find((c) => c.column_name === sortColumn);
       if (!validColumn) {
         console.warn(`Invalid sort column: ${sortColumn}`);
         // Fall back to query without sorting
@@ -356,7 +356,7 @@ export async function getTableData(
         `;
       } else {
         // Get records with pagination and sorting - use template literal for direction
-        if (direction === 'DESC') {
+        if (direction === "DESC") {
           query = await db`
             SELECT *
             FROM ${db(tableName)}

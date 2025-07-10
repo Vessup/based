@@ -112,10 +112,16 @@ export async function fetchTableData(
   page = 1,
   pageSize = 10,
   sortColumn?: string,
-  sortDirection?: 'asc' | 'desc'
+  sortDirection?: "asc" | "desc",
 ) {
   try {
-    const data = await getTableData(tableName, page, pageSize, sortColumn, sortDirection);
+    const data = await getTableData(
+      tableName,
+      page,
+      pageSize,
+      sortColumn,
+      sortDirection,
+    );
     const columns = await getTableColumns(tableName);
 
     return {

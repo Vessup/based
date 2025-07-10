@@ -39,8 +39,8 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120 * 1000,
     env: {
-       NODE_ENV: "test",
-       PORT: "3002",
+      NODE_ENV: "test",
+      PORT: "3002",
     },
   },
 });
