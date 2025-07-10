@@ -3,6 +3,7 @@
 import {
   createSchema,
   updateTableCell as dbUpdateTableCell,
+  deleteSchema,
   deleteTable,
   deleteTableRows,
   getSchemas,
@@ -10,6 +11,7 @@ import {
   getTableData,
   getTables,
   insertTableRow,
+  renameSchema,
 } from "./db";
 
 /**
@@ -41,6 +43,43 @@ export async function createDatabaseSchema(schemaName: string) {
     return {
       success: false,
       message: `Failed to create schema ${schemaName}`,
+      error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to delete a database schema
+ */
+export async function deleteDatabaseSchema(schemaName: string) {
+  try {
+    const result = await deleteSchema(schemaName);
+    return result;
+  } catch (error) {
+    console.error(`Error deleting schema ${schemaName}:`, error);
+    return {
+      success: false,
+      message: `Failed to delete schema ${schemaName}`,
+      error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to rename a database schema
+ */
+export async function renameDatabaseSchema(oldName: string, newName: string) {
+  try {
+    const result = await renameSchema(oldName, newName);
+    return result;
+  } catch (error) {
+    console.error(
+      `Error renaming schema from ${oldName} to ${newName}:`,
+      error,
+    );
+    return {
+      success: false,
+      message: `Failed to rename schema from ${oldName} to ${newName}`,
       error: String(error),
     };
   }

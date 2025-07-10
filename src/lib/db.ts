@@ -127,6 +127,117 @@ export async function getSchemas() {
 }
 
 /**
+ * Deletes a schema from the database
+ * @param schemaName The name of the schema to delete
+ * @returns Object containing success status and message
+ */
+export async function deleteSchema(schemaName: string) {
+  try {
+    // Prevent deletion of the public schema
+    if (schemaName === "public") {
+      return {
+        success: false,
+        message: "Cannot delete the 'public' schema",
+      };
+    }
+
+    // Check if schema exists
+    const schemaExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.schemata
+        WHERE schema_name = ${schemaName}
+      ) AS exists;
+    `;
+
+    if (!schemaExists[0].exists) {
+      return {
+        success: false,
+        message: `Schema '${schemaName}' does not exist`,
+      };
+    }
+
+    // Drop the schema (CASCADE to drop all objects in the schema)
+    await db`DROP SCHEMA ${db(schemaName)} CASCADE;`;
+
+    return {
+      success: true,
+      message: `Schema '${schemaName}' deleted successfully`,
+    };
+  } catch (error) {
+    console.error(`Error deleting schema ${schemaName}:`, error);
+    return {
+      success: false,
+      message: `Failed to delete schema: ${error}`,
+    };
+  }
+}
+
+/**
+ * Renames a schema in the database
+ * @param oldName The current name of the schema
+ * @param newName The new name for the schema
+ * @returns Object containing success status and message
+ */
+export async function renameSchema(oldName: string, newName: string) {
+  try {
+    // Prevent renaming of the public schema
+    if (oldName === "public") {
+      return {
+        success: false,
+        message: "Cannot rename the 'public' schema",
+      };
+    }
+
+    // Check if old schema exists
+    const oldSchemaExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.schemata
+        WHERE schema_name = ${oldName}
+      ) AS exists;
+    `;
+
+    if (!oldSchemaExists[0].exists) {
+      return {
+        success: false,
+        message: `Schema '${oldName}' does not exist`,
+      };
+    }
+
+    // Check if new schema name already exists
+    const newSchemaExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.schemata
+        WHERE schema_name = ${newName}
+      ) AS exists;
+    `;
+
+    if (newSchemaExists[0].exists) {
+      return {
+        success: false,
+        message: `Schema '${newName}' already exists`,
+      };
+    }
+
+    // Rename the schema
+    await db`ALTER SCHEMA ${db(oldName)} RENAME TO ${db(newName)};`;
+
+    return {
+      success: true,
+      message: `Schema renamed from '${oldName}' to '${newName}' successfully`,
+    };
+  } catch (error) {
+    console.error(
+      `Error renaming schema from ${oldName} to ${newName}:`,
+      error,
+    );
+    return {
+      success: false,
+      message: `Failed to rename schema: ${error}`,
+    };
+  }
+}
+
+/**
  * Fetches all table names from the specified schema
  * @param schema The database schema to fetch tables from
  * @returns Array of table names

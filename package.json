@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "license": "CC BY-NC 4.0",
   "scripts": {
-    "dev": "bun --bun next dev --turbopack",
+    "dev": "bun --bun next dev",
     "build": "bun --bun next build",
     "start": "bun --bun next start",
     "format": "biome format --write",
     "lint": "biome lint --write",
     "check": "biome check --write",
     "docker": "docker compose up",
-    "setupDb": "bun scripts/setupDb.ts",
-    "seedDb": "bun scripts/seedDb.ts"
+    "initializeDb": "bun scripts/initializeDb.ts",
+    "seedDb": "bun scripts/seedDb.ts",
+    "setupDb": "bun run initializeDb && bun run seedDb"
   },
   "dependencies": {
     "@faker-js/faker": "^9.8.0",

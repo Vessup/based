@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
-export default async function setupDb() {
-  logger.info("Executing setupDb");
+export default async function initializeDb() {
+  logger.info("Executing initializeDb");
+
   await db`
     DROP TABLE IF EXISTS "user" CASCADE;
   `;
@@ -51,9 +52,10 @@ export default async function setupDb() {
       "updatedAt" TIMESTAMP NOT NULL
     );
   `;
-  logger.info("Completed setupDb");
+
+  logger.info("Completed initializeDb");
 }
 
 if (import.meta.main) {
-  await setupDb();
+  await initializeDb();
 }

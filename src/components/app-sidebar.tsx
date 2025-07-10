@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronDown,
   Database,
+  Edit2,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -39,6 +40,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -60,9 +66,11 @@ import {
 } from "@/components/ui/sidebar";
 import {
   createDatabaseSchema,
+  deleteDatabaseSchema,
   deleteTableAction,
   fetchDatabaseSchemas,
   fetchDatabaseTables,
+  renameDatabaseSchema,
 } from "@/lib/actions";
 import { useParams } from "next/navigation";
 
@@ -88,6 +96,17 @@ export function AppSidebar() {
   const [createSchemaError, setCreateSchemaError] = useState<string | null>(
     null,
   );
+
+  // State for schema management
+  const [schemaToDelete, setSchemaToDelete] = useState<string | null>(null);
+  const [isDeleteSchemaDialogOpen, setIsDeleteSchemaDialogOpen] =
+    useState(false);
+  const [schemaToRename, setSchemaToRename] = useState<string | null>(null);
+  const [isRenameSchemaDialogOpen, setIsRenameSchemaDialogOpen] =
+    useState(false);
+  const [newSchemaNameForRename, setNewSchemaNameForRename] = useState("");
+  const [schemaPopoverOpen, setSchemaPopoverOpen] = useState(false);
+
   const params = useParams<{ table: string }>();
 
   // State for table search
@@ -203,6 +222,60 @@ export function AppSidebar() {
     }
   };
 
+  // Function to handle schema deletion
+  const handleDeleteSchema = async () => {
+    if (!schemaToDelete) return;
+
+    try {
+      setDeleteStatus({ loading: true, error: null });
+      const result = await deleteDatabaseSchema(schemaToDelete);
+
+      if (result.success) {
+        // If we deleted the selected schema, switch to public
+        if (schemaToDelete === selectedSchema) {
+          setSelectedSchema("public");
+        }
+        // Refresh schemas list
+        await loadSchemas();
+        setIsDeleteSchemaDialogOpen(false);
+        setSchemaToDelete(null);
+      } else {
+        setDeleteStatus({ loading: false, error: result.message });
+      }
+    } catch (error) {
+      setDeleteStatus({ loading: false, error: `Error: ${error}` });
+    }
+  };
+
+  // Function to handle schema renaming
+  const handleRenameSchema = async () => {
+    if (!schemaToRename || !newSchemaNameForRename.trim()) return;
+
+    try {
+      setDeleteStatus({ loading: true, error: null });
+      const result = await renameDatabaseSchema(
+        schemaToRename,
+        newSchemaNameForRename.trim(),
+      );
+
+      if (result.success) {
+        // If we renamed the selected schema, update selection
+        if (schemaToRename === selectedSchema) {
+          setSelectedSchema(newSchemaNameForRename.trim());
+        }
+        // Refresh schemas list
+        await loadSchemas();
+        setIsRenameSchemaDialogOpen(false);
+        setSchemaToRename(null);
+        setNewSchemaNameForRename("");
+      } else {
+        setDeleteStatus({ loading: false, error: result.message });
+      }
+    } catch (error) {
+      setDeleteStatus({ loading: false, error: `Error: ${error}` });
+    }
+  };
+
   return (
     <>
       <Sidebar>
@@ -231,32 +304,95 @@ export function AppSidebar() {
 
           <SidebarGroup>
             <SidebarGroupLabel>Schema</SidebarGroupLabel>
-            <SidebarGroupAction className="mr-0.5">
+            <SidebarGroupAction
+              className="mr-0.5"
+              onClick={() => {
+                setNewSchemaName("");
+                setCreateSchemaError(null);
+                setIsCreateSchemaDialogOpen(true);
+              }}
+            >
               <Plus /> <span className="sr-only">Add Schema</span>
             </SidebarGroupAction>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                  <Popover
+                    open={schemaPopoverOpen}
+                    onOpenChange={setSchemaPopoverOpen}
+                  >
+                    <PopoverTrigger asChild>
                       <SidebarMenuButton>
                         {selectedSchema || "Select schema"}
                         <ChevronDown className="ml-auto" />
                       </SidebarMenuButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {schemas
-                        .filter((s) => s !== selectedSchema)
-                        .map((schema) => (
-                          <DropdownMenuItem
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      align="start"
+                      sideOffset={4}
+                    >
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {schemas.map((schema) => (
+                          <div
                             key={schema}
-                            onClick={() => handleSchemaChange(schema)}
+                            className={`group flex items-center justify-between px-3 py-2 hover:bg-accent cursor-pointer ${
+                              schema === selectedSchema ? "bg-accent" : ""
+                            }`}
                           >
-                            <span>{schema}</span>
-                          </DropdownMenuItem>
+                            <button
+                              type="button"
+                              className="flex-1 text-left"
+                              onClick={() => {
+                                handleSchemaChange(schema);
+                                setSchemaPopoverOpen(false);
+                              }}
+                            >
+                              {schema}
+                            </button>
+                            {schema !== "public" && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSchemaToRename(schema);
+                                      setNewSchemaNameForRename(schema);
+                                      setIsRenameSchemaDialogOpen(true);
+                                      setSchemaPopoverOpen(false);
+                                    }}
+                                  >
+                                    <Edit2 className="mr-2 h-4 w-4" />
+                                    Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      setSchemaToDelete(schema);
+                                      setIsDeleteSchemaDialogOpen(true);
+                                      setSchemaPopoverOpen(false);
+                                    }}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
@@ -364,12 +500,11 @@ export function AppSidebar() {
           </AlertDialogHeader>
 
           <div className="py-4">
-            <input
+            <Input
               type="text"
               value={newSchemaName}
               onChange={(e) => setNewSchemaName(e.target.value)}
               placeholder="Schema name"
-              className="w-full px-3 py-2 border rounded-md"
               disabled={isCreatingSchema}
             />
             {createSchemaError && (
@@ -387,6 +522,77 @@ export function AppSidebar() {
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               {isCreatingSchema ? "Creating..." : "Create Schema"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Schema Dialog */}
+      <AlertDialog
+        open={isDeleteSchemaDialogOpen}
+        onOpenChange={setIsDeleteSchemaDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Schema</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the schema{" "}
+              <strong>{schemaToDelete}</strong>?
+              <br />
+              This will delete all tables and data within this schema. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteStatus.loading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteSchema}
+              disabled={deleteStatus.loading}
+            >
+              {deleteStatus.loading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Schema Dialog */}
+      <AlertDialog
+        open={isRenameSchemaDialogOpen}
+        onOpenChange={setIsRenameSchemaDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Schema</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new name for the schema <strong>{schemaToRename}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <Input
+              type="text"
+              value={newSchemaNameForRename}
+              onChange={(e) => setNewSchemaNameForRename(e.target.value)}
+              placeholder="New schema name"
+              disabled={deleteStatus.loading}
+            />
+            {deleteStatus.error && (
+              <p className="text-red-500 text-sm mt-2">{deleteStatus.error}</p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteStatus.loading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRenameSchema}
+              disabled={deleteStatus.loading || !newSchemaNameForRename.trim()}
+            >
+              {deleteStatus.loading ? "Renaming..." : "Rename"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

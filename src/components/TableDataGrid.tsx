@@ -1,6 +1,13 @@
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import { MoreHorizontal, Plus, RefreshCw, Trash2, ListFilter, ArrowUpRight } from "lucide-react";
+import {
+  ArrowUpRight,
+  ListFilter,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import React from "react";
 import { type Column, DataGrid } from "react-data-grid";
@@ -28,10 +35,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { RenderCheckboxProps } from "react-data-grid";
-import { MoreMenuButton } from "./MoreMenuButton";
-import { ColumnsMenuButton } from "./ColumnsMenuButton";
 import { useRouter } from "next/navigation";
+import type { RenderCheckboxProps } from "react-data-grid";
+import { ColumnsMenuButton } from "./ColumnsMenuButton";
+import { MoreMenuButton } from "./MoreMenuButton";
 
 // Custom CSS to hide outline for header and checkbox cells
 const customGridStyles = `
@@ -68,7 +75,9 @@ interface TableDataGridProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   filters: { id: string; column: string; operator: string; value: string }[];
-  onFiltersChange: (filters: { id: string; column: string; operator: string; value: string }[]) => void;
+  onFiltersChange: (
+    filters: { id: string; column: string; operator: string; value: string }[],
+  ) => void;
   showFilters: boolean;
   onShowFiltersChange: (show: boolean) => void;
 }
@@ -110,13 +119,15 @@ export function TableDataGrid({
   const gridRef = React.useRef<HTMLDivElement>(null);
 
   // State for visible columns
-  const [visibleColumns, setVisibleColumns] = React.useState(() => columns.map(col => col.key));
+  const [visibleColumns, setVisibleColumns] = React.useState(() =>
+    columns.map((col) => col.key),
+  );
   React.useEffect(() => {
-    setVisibleColumns(columns.map(col => col.key));
+    setVisibleColumns(columns.map((col) => col.key));
   }, [columns]);
-  const visibleCols = React.useMemo(() =>
-    columns.filter(col => visibleColumns.includes(col.key)),
-    [columns, visibleColumns]
+  const visibleCols = React.useMemo(
+    () => columns.filter((col) => visibleColumns.includes(col.key)),
+    [columns, visibleColumns],
   );
 
   // Operators
@@ -195,49 +206,56 @@ export function TableDataGrid({
   }, [contextMenuState]);
 
   // Enhance columns to add cellClass/headerCellClass for outline control and custom FK formatter
-  const enhancedColumns = columns.map((col: Column<Record<string, unknown>> & { foreign_table_name?: string; foreign_column_name?: string }) => {
-    // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
-    const isCheckbox =
-      col.key === "select-row" ||
-      col.key === "rdg-select-row" ||
-      col.key === "rdg-select-column";
+  const enhancedColumns = columns.map(
+    (
+      col: Column<Record<string, unknown>> & {
+        foreign_table_name?: string;
+        foreign_column_name?: string;
+      },
+    ) => {
+      // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
+      const isCheckbox =
+        col.key === "select-row" ||
+        col.key === "rdg-select-row" ||
+        col.key === "rdg-select-column";
 
-    // If this column is a foreign key, add a custom formatter
-    if (col.foreign_table_name && col.foreign_column_name) {
+      // If this column is a foreign key, add a custom formatter
+      if (col.foreign_table_name && col.foreign_column_name) {
+        return {
+          ...col,
+          cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
+          headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+          formatter: ({ row }: { row: Record<string, unknown> }) => {
+            const value = row[col.key];
+            if (value === undefined || value === null || value === "") {
+              return <span className="text-gray-400">NULL</span>;
+            }
+            return (
+              <span className="inline-flex items-center gap-1">
+                {String(value)}
+                <ArrowUpRight
+                  className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
+                  size={14}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(
+                      `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`,
+                    );
+                  }}
+                  aria-label={`Go to ${col.foreign_table_name}`}
+                />
+              </span>
+            );
+          },
+        };
+      }
       return {
         ...col,
         cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
         headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-        formatter: ({ row }: { row: Record<string, unknown> }) => {
-          const value = row[col.key];
-          if (value === undefined || value === null || value === "") {
-            return <span className="text-gray-400">NULL</span>;
-          }
-          return (
-            <span className="inline-flex items-center gap-1">
-              {String(value)}
-              <ArrowUpRight
-                className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
-                size={14}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  router.push(
-                    `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`
-                  );
-                }}
-                aria-label={`Go to ${col.foreign_table_name}`}
-              />
-            </span>
-          );
-        },
       };
-    }
-    return {
-      ...col,
-      cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
-      headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-    };
-  });
+    },
+  );
 
   return (
     <>
@@ -333,7 +351,7 @@ export function TableDataGrid({
                     <PaginationLink
                       href="#"
                       isActive={currentPage === 1}
-                      onClick={e => {
+                      onClick={(e) => {
                         e.preventDefault();
                         if (currentPage !== 1) onPageChange(1);
                       }}
@@ -342,14 +360,14 @@ export function TableDataGrid({
                     >
                       1
                     </PaginationLink>
-                  </PaginationItem>
+                  </PaginationItem>,
                 );
                 // Ellipsis if needed
                 if (start > 2) {
                   pages.push(
                     <PaginationItem key="start-ellipsis">
                       <span className="px-2">…</span>
-                    </PaginationItem>
+                    </PaginationItem>,
                   );
                 }
                 // Window of pages
@@ -359,7 +377,7 @@ export function TableDataGrid({
                       <PaginationLink
                         href="#"
                         isActive={currentPage === i}
-                        onClick={e => {
+                        onClick={(e) => {
                           e.preventDefault();
                           if (currentPage !== i) onPageChange(i);
                         }}
@@ -368,7 +386,7 @@ export function TableDataGrid({
                       >
                         {i}
                       </PaginationLink>
-                    </PaginationItem>
+                    </PaginationItem>,
                   );
                 }
                 // Ellipsis if needed
@@ -376,7 +394,7 @@ export function TableDataGrid({
                   pages.push(
                     <PaginationItem key="end-ellipsis">
                       <span className="px-2">…</span>
-                    </PaginationItem>
+                    </PaginationItem>,
                   );
                 }
                 // Always show last page if more than 1
@@ -386,7 +404,7 @@ export function TableDataGrid({
                       <PaginationLink
                         href="#"
                         isActive={currentPage === total}
-                        onClick={e => {
+                        onClick={(e) => {
                           e.preventDefault();
                           if (currentPage !== total) onPageChange(total);
                         }}
@@ -395,7 +413,7 @@ export function TableDataGrid({
                       >
                         {total}
                       </PaginationLink>
-                    </PaginationItem>
+                    </PaginationItem>,
                   );
                 }
                 return pages;
@@ -420,40 +438,53 @@ export function TableDataGrid({
           {filters.map((filter, i) => (
             <div key={filter.id} className="flex items-center gap-1">
               {i === 0 ? (
-                <span className="text-xs text-muted-foreground mr-1">where</span>
+                <span className="text-xs text-muted-foreground mr-1">
+                  where
+                </span>
               ) : null}
               <select
                 className="rounded bg-background border px-2 py-1 text-xs"
                 value={filter.column}
-                onChange={e => {
+                onChange={(e) => {
                   const newFilters = [...filters];
                   newFilters[i].column = e.target.value;
                   onFiltersChange(newFilters);
                 }}
               >
                 {columns
-                  .filter(col => !["select-row", "rdg-select-row", "rdg-select-column"].includes(col.key))
-                  .map(col => (
-                    <option key={col.key} value={col.key}>{col.name || col.key}</option>
+                  .filter(
+                    (col) =>
+                      ![
+                        "select-row",
+                        "rdg-select-row",
+                        "rdg-select-column",
+                      ].includes(col.key),
+                  )
+                  .map((col) => (
+                    <option key={col.key} value={col.key}>
+                      {col.name || col.key}
+                    </option>
                   ))}
               </select>
               <select
                 className="rounded bg-background border px-2 py-1 text-xs"
                 value={filter.operator}
-                onChange={e => {
+                onChange={(e) => {
                   const newFilters = [...filters];
                   newFilters[i].operator = e.target.value;
                   onFiltersChange(newFilters);
                 }}
               >
-                {operators.map(op => (
-                  <option key={op.value} value={op.value}>{op.label}</option>
+                {operators.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
                 ))}
               </select>
               <input
                 className="rounded bg-background border px-2 py-1 text-xs min-w-24"
                 value={filter.value}
-                onChange={e => {
+                onChange={(e) => {
                   const newFilters = [...filters];
                   newFilters[i].value = e.target.value;
                   onFiltersChange(newFilters);
@@ -462,7 +493,9 @@ export function TableDataGrid({
               />
               <button
                 className="ml-1 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => onFiltersChange(filters.filter((_, idx) => idx !== i))}
+                onClick={() =>
+                  onFiltersChange(filters.filter((_, idx) => idx !== i))
+                }
                 disabled={filters.length === 1}
                 type="button"
               >
@@ -475,10 +508,22 @@ export function TableDataGrid({
             size="sm"
             className="text-xs px-2"
             onClick={() => {
-              const dataCols = columns.filter(col => !["select-row", "rdg-select-row", "rdg-select-column"].includes(col.key));
+              const dataCols = columns.filter(
+                (col) =>
+                  ![
+                    "select-row",
+                    "rdg-select-row",
+                    "rdg-select-column",
+                  ].includes(col.key),
+              );
               onFiltersChange([
                 ...filters,
-                { id: Math.random().toString(36).slice(2), column: dataCols[0]?.key || "", operator: "equals", value: "" }
+                {
+                  id: Math.random().toString(36).slice(2),
+                  column: dataCols[0]?.key || "",
+                  operator: "equals",
+                  value: "",
+                },
               ]);
             }}
           >
@@ -489,8 +534,22 @@ export function TableDataGrid({
             size="sm"
             className="text-xs px-2"
             onClick={() => {
-              const dataCols = columns.filter(col => !["select-row", "rdg-select-row", "rdg-select-column"].includes(col.key));
-              onFiltersChange([{ id: Math.random().toString(36).slice(2), column: dataCols[0]?.key || "", operator: "equals", value: "" }]);
+              const dataCols = columns.filter(
+                (col) =>
+                  ![
+                    "select-row",
+                    "rdg-select-row",
+                    "rdg-select-column",
+                  ].includes(col.key),
+              );
+              onFiltersChange([
+                {
+                  id: Math.random().toString(36).slice(2),
+                  column: dataCols[0]?.key || "",
+                  operator: "equals",
+                  value: "",
+                },
+              ]);
             }}
           >
             Clear filters
@@ -501,7 +560,9 @@ export function TableDataGrid({
         <ContextMenuTrigger asChild>
           <div style={{ position: "relative" }} ref={gridRef}>
             <DataGrid
-              columns={enhancedColumns.filter(col => visibleColumns.includes(col.key))}
+              columns={enhancedColumns.filter((col) =>
+                visibleColumns.includes(col.key),
+              )}
               rows={filteredData}
               rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
               selectedRows={selectedRows}

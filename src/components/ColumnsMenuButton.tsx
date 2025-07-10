@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ListFilter } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { Column } from "react-data-grid";
 
 interface ColumnsMenuButtonProps {
@@ -25,9 +25,10 @@ export const ColumnsMenuButton: React.FC<ColumnsMenuButtonProps> = ({
 
   const filteredColumns = useMemo(() => {
     if (!search) return allColumns;
-    return allColumns.filter((col) =>
-      col.name?.toString().toLowerCase().includes(search.toLowerCase()) ||
-      col.key.toLowerCase().includes(search.toLowerCase())
+    return allColumns.filter(
+      (col) =>
+        col.name?.toString().toLowerCase().includes(search.toLowerCase()) ||
+        col.key.toLowerCase().includes(search.toLowerCase()),
     );
   }, [allColumns, search]);
 
@@ -41,7 +42,10 @@ export const ColumnsMenuButton: React.FC<ColumnsMenuButtonProps> = ({
           <ListFilter className="h-4 w-4 mr-2" /> Columns
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64 max-h-96 overflow-y-auto">
+      <DropdownMenuContent
+        align="start"
+        className="w-64 max-h-96 overflow-y-auto"
+      >
         <div className="flex items-center justify-between px-2 py-1">
           <span className="font-medium text-sm">Toggle columns</span>
           <button
@@ -57,7 +61,7 @@ export const ColumnsMenuButton: React.FC<ColumnsMenuButtonProps> = ({
             className="w-full rounded border px-2 py-1 text-xs bg-background"
             placeholder="Search..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <DropdownMenuItem
@@ -85,4 +89,4 @@ export const ColumnsMenuButton: React.FC<ColumnsMenuButtonProps> = ({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}; 
+};

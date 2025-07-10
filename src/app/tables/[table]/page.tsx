@@ -125,7 +125,7 @@ function doneNProgress() {
 
 function parseFiltersFromQuery(
   searchParams: URLSearchParams,
-  columns: ColumnInfo[]
+  columns: ColumnInfo[],
 ): { id: string; column: string; operator: string; value: string }[] {
   const filtersParam = searchParams.get("filters");
   if (!filtersParam)
@@ -149,13 +149,14 @@ function parseFiltersFromQuery(
 }
 
 function serializeFiltersToQuery(
-  filters: { id: string; column: string; operator: string; value: string }[]
+  filters: { id: string; column: string; operator: string; value: string }[],
 ) {
   return filters
-    .map((f) =>
-      `${encodeURIComponent(f.column)}:${encodeURIComponent(
-        f.operator
-      )}:${encodeURIComponent(f.value)}`
+    .map(
+      (f) =>
+        `${encodeURIComponent(f.column)}:${encodeURIComponent(
+          f.operator,
+        )}:${encodeURIComponent(f.value)}`,
     )
     .join(",");
 }
@@ -197,8 +198,12 @@ export default function TablePage() {
   const [isAddingRecord, setIsAddingRecord] = useState(false);
 
   // State for filters and filter visibility, synced with URL
-  const [showFilters, setShowFilters] = useState(searchParams.get("showFilters") === "1");
-  const [filters, setFilters] = useState(() => parseFiltersFromQuery(searchParams, columns));
+  const [showFilters, setShowFilters] = useState(
+    searchParams.get("showFilters") === "1",
+  );
+  const [filters, setFilters] = useState(() =>
+    parseFiltersFromQuery(searchParams, columns),
+  );
 
   // Sync filters to URL
   useEffect(() => {
