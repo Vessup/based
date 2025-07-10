@@ -17,12 +17,6 @@ import { Toaster } from "sonner";
 import "react-data-grid/lib/styles.css";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -60,29 +54,35 @@ const customGridStyles = `
 interface SortableHeaderProps {
   column: { key: string; name: string };
   sortColumn?: string;
-  sortDirection?: 'asc' | 'desc';
+  sortDirection?: "asc" | "desc";
   onSort: (columnKey: string) => void;
 }
 
-const SortableHeader = React.memo(function SortableHeader({ column, sortColumn, sortDirection, onSort }: SortableHeaderProps) {
+const SortableHeader = React.memo(function SortableHeader({
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: SortableHeaderProps) {
   const isCurrentSort = sortColumn === column.key;
-  
+
   return (
-    <div 
-      className="flex items-center justify-between w-full cursor-pointer select-none hover:bg-muted/50 px-2 py-1 -mx-2 -my-1"
+    <button
+      type="button"
+      className="flex items-center justify-between w-full cursor-pointer select-none hover:bg-muted/50 px-2 py-1 -mx-2 -my-1 text-left border-0 bg-transparent"
       onClick={() => onSort(column.key)}
     >
       <span>{column.name}</span>
       {isCurrentSort && (
         <span className="ml-1 text-muted-foreground">
-          {sortDirection === 'desc' ? (
+          {sortDirection === "desc" ? (
             <ArrowDown size={14} />
           ) : (
             <ArrowUp size={14} />
           )}
         </span>
       )}
-    </div>
+    </button>
   );
 });
 
@@ -113,7 +113,7 @@ interface TableDataGridProps {
   showFilters: boolean;
   onShowFiltersChange: (show: boolean) => void;
   sortColumn?: string;
-  sortDirection?: 'asc' | 'desc';
+  sortDirection?: "asc" | "desc";
   onColumnSort: (columnKey: string) => void;
 }
 
@@ -145,14 +145,13 @@ export function TableDataGrid({
   const { theme } = useTheme();
   const router = useRouter();
 
-  // Custom context menu open state and position for data cells
-  const [contextMenuState, setContextMenuState] = React.useState<{
-    top: number;
-    left: number;
-    value: string;
+  const [contextMenuValue, setContextMenuValue] = React.useState<string | null>(
+    null,
+  );
+  const [contextMenuPosition, setContextMenuPosition] = React.useState<{
+    x: number;
+    y: number;
   } | null>(null);
-
-  const [contextMenuValue, setContextMenuValue] = React.useState<string>("");
 
   const gridRef = React.useRef<HTMLDivElement>(null);
 
@@ -211,104 +210,106 @@ export function TableDataGrid({
       },
       event: React.MouseEvent,
     ) => {
-      // Only handle data cells
+      // Prevent default browser context menu
+      event.preventDefault();
+
+      // Don't show context menu for header cells
+      if (!args.row) {
+        return;
+      }
+
+      // Don't show context menu for checkbox cells
       const checkboxKeys = [
         "select-row",
         "rdg-select-row",
         "rdg-select-column",
       ];
-      if (!args.row) return;
-      if (checkboxKeys.includes(args.column.key)) return;
+      if (checkboxKeys.includes(args.column.key)) {
+        return;
+      }
 
-      // Only for data cells: prevent default to allow Radix menu, set value
-      event.preventDefault();
+      // Only for data cells: set value and position to trigger menu
       const value = args.row[args.column.key];
       setContextMenuValue(
         value === undefined || value === null ? "" : String(value),
       );
+      setContextMenuPosition({ x: event.clientX, y: event.clientY });
     },
     [],
   );
 
-  // Handler to close the context menu
-  const handleCloseContextMenu = React.useCallback(() => {
-    setContextMenuState(null);
-  }, []);
-
-  // Handler to copy value
-  const handleCopy = React.useCallback(() => {
-    if (contextMenuState?.value) {
-      navigator.clipboard.writeText(contextMenuState.value);
-    }
-    setContextMenuState(null);
-  }, [contextMenuState]);
-
   // Enhance columns to add cellClass/headerCellClass for outline control and custom FK formatter
-  const enhancedColumns = React.useMemo(() => columns.map(
-    (
-      col: Column<Record<string, unknown>> & {
-        foreign_table_name?: string;
-        foreign_column_name?: string;
-      },
-    ) => {
-      // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
-      const isCheckbox =
-        col.key === "select-row" ||
-        col.key === "rdg-select-row" ||
-        col.key === "rdg-select-column";
-
-      // Add custom header renderer for sortable columns (skip checkbox columns)
-      // React-data-grid expects headerRenderer to be a React component, not a function returning JSX
-      const headerRenderer = isCheckbox ? undefined : function HeaderRenderer() {
-        return (
-          <SortableHeader
-            column={{ key: col.key, name: col.name || col.key }}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={onColumnSort}
-          />
-        );
-      };
-
-      // If this column is a foreign key, add a custom formatter
-      if (col.foreign_table_name && col.foreign_column_name) {
-        return {
-          ...col,
-          cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
-          headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-          headerRenderer,
-          formatter: ({ row }: { row: Record<string, unknown> }) => {
-            const value = row[col.key];
-            if (value === undefined || value === null || value === "") {
-              return <span className="text-gray-400">NULL</span>;
-            }
-            return (
-              <span className="inline-flex items-center gap-1">
-                {String(value)}
-                <ArrowUpRight
-                  className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
-                  size={14}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(
-                      `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`,
-                    );
-                  }}
-                  aria-label={`Go to ${col.foreign_table_name}`}
-                />
-              </span>
-            );
+  const enhancedColumns = React.useMemo(
+    () =>
+      columns.map(
+        (
+          col: Column<Record<string, unknown>> & {
+            foreign_table_name?: string;
+            foreign_column_name?: string;
           },
-        };
-      }
-      return {
-        ...col,
-        cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
-        headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-        headerRenderer,
-      };
-    },
-  ), [columns, sortColumn, sortDirection, onColumnSort, router]);
+        ) => {
+          // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
+          const isCheckbox =
+            col.key === "select-row" ||
+            col.key === "rdg-select-row" ||
+            col.key === "rdg-select-column";
+
+          // Add custom header renderer for sortable columns (skip checkbox columns)
+          // React-data-grid expects headerRenderer to be a React component, not a function returning JSX
+          const headerRenderer = isCheckbox
+            ? undefined
+            : function HeaderRenderer() {
+                return (
+                  <SortableHeader
+                    column={{ key: col.key, name: col.name || col.key }}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={onColumnSort}
+                  />
+                );
+              };
+
+          // If this column is a foreign key, add a custom formatter
+          if (col.foreign_table_name && col.foreign_column_name) {
+            return {
+              ...col,
+              cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
+              headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+              headerRenderer,
+              formatter: ({ row }: { row: Record<string, unknown> }) => {
+                const value = row[col.key];
+                if (value === undefined || value === null || value === "") {
+                  return <span className="text-gray-400">NULL</span>;
+                }
+                return (
+                  <span className="inline-flex items-center gap-1">
+                    {String(value)}
+                    <ArrowUpRight
+                      className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
+                      size={14}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(
+                          `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`,
+                        );
+                      }}
+                      aria-label={`Go to ${col.foreign_table_name}`}
+                    />
+                  </span>
+                );
+              },
+            };
+          }
+          return {
+            ...col,
+            cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
+            headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+            headerRenderer,
+          };
+        },
+      ),
+    [columns, sortColumn, sortDirection, onColumnSort, router],
+  );
 
   return (
     <>
@@ -609,50 +610,82 @@ export function TableDataGrid({
           </Button>
         </div>
       )}
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div style={{ position: "relative" }} ref={gridRef}>
-            <DataGrid
-              columns={enhancedColumns.filter((col) =>
-                visibleColumns.includes(col.key),
-              )}
-              rows={filteredData}
-              rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
-              selectedRows={selectedRows}
-              onSelectedRowsChange={onSelectedRowsChange}
-              onRowsChange={onRowsChange}
-              renderers={{
-                renderCheckbox: ({
-                  onChange,
-                  ...props
-                }: RenderCheckboxProps) => (
-                  <Checkbox
-                    {...props}
-                    onCheckedChange={(checked) => onChange(!!checked, false)}
-                  />
-                ),
-              }}
-              className={clsx(
-                theme === "light" && "rdg-light",
-                "rounded-lg mt-4 w-full",
-              )}
-              style={{ width: "100%" }}
-              onCellContextMenu={handleCellContextMenu}
-            />
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem
+      <div style={{ position: "relative" }} ref={gridRef}>
+        <DataGrid
+          columns={enhancedColumns.filter((col) =>
+            visibleColumns.includes(col.key),
+          )}
+          rows={filteredData}
+          rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
+          selectedRows={selectedRows}
+          onSelectedRowsChange={onSelectedRowsChange}
+          onRowsChange={onRowsChange}
+          renderers={{
+            renderCheckbox: ({ onChange, ...props }: RenderCheckboxProps) => (
+              <Checkbox
+                {...props}
+                onCheckedChange={(checked) => onChange(!!checked, false)}
+              />
+            ),
+          }}
+          className={clsx(
+            theme === "light" && "rdg-light",
+            "rounded-lg mt-4 w-full",
+          )}
+          style={{ width: "100%" }}
+          onCellContextMenu={handleCellContextMenu}
+        />
+        {contextMenuValue !== null && contextMenuPosition && (
+          <div
+            role="presentation"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 999,
+            }}
+            onContextMenu={(e) => e.preventDefault()}
             onClick={() => {
-              if (contextMenuValue) {
-                navigator.clipboard.writeText(contextMenuValue);
+              setContextMenuValue(null);
+              setContextMenuPosition(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setContextMenuValue(null);
+                setContextMenuPosition(null);
               }
             }}
           >
-            Copy value
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+            <div
+              style={{
+                position: "absolute",
+                top: contextMenuPosition.y,
+                left: contextMenuPosition.x,
+                zIndex: 1000,
+              }}
+            >
+              <div className="z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg">
+                <button
+                  type="button"
+                  className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground w-full text-left"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (contextMenuValue) {
+                      navigator.clipboard.writeText(contextMenuValue);
+                    }
+                    setContextMenuValue(null);
+                    setContextMenuPosition(null);
+                  }}
+                >
+                  Copy value
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="my-4 text-sm text-muted-foreground">
         Showing {data.length} of {pagination.total} records
       </div>
