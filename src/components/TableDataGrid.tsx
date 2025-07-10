@@ -48,6 +48,13 @@ const customGridStyles = `
     outline: none !important;
     box-shadow: none !important;
   }
+  .rdg-header-cell button {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0.5rem;
+  }
 `;
 
 // Custom sortable header renderer
@@ -69,7 +76,7 @@ const SortableHeader = React.memo(function SortableHeader({
   return (
     <button
       type="button"
-      className="flex items-center justify-between w-full cursor-pointer select-none hover:bg-muted/50 px-2 py-1 -mx-2 -my-1 text-left border-0 bg-transparent"
+      className="flex items-center justify-between w-full h-full cursor-pointer select-none hover:bg-muted/50 px-2 py-1 text-left border-0 bg-transparent focus:outline-none"
       onClick={() => onSort(column.key)}
     >
       <span>{column.name}</span>
@@ -255,8 +262,8 @@ export function TableDataGrid({
             col.key === "rdg-select-column";
 
           // Add custom header renderer for sortable columns (skip checkbox columns)
-          // React-data-grid expects headerRenderer to be a React component, not a function returning JSX
-          const headerRenderer = isCheckbox
+          // React-data-grid v7 expects renderHeaderCell, not headerRenderer
+          const renderHeaderCell = isCheckbox
             ? undefined
             : function HeaderRenderer() {
                 return (
@@ -275,7 +282,7 @@ export function TableDataGrid({
               ...col,
               cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
               headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-              headerRenderer,
+              renderHeaderCell,
               formatter: ({ row }: { row: Record<string, unknown> }) => {
                 const value = row[col.key];
                 if (value === undefined || value === null || value === "") {
@@ -304,7 +311,7 @@ export function TableDataGrid({
             ...col,
             cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
             headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-            headerRenderer,
+            renderHeaderCell,
           };
         },
       ),
