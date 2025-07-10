@@ -29,7 +29,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
@@ -50,7 +52,7 @@ jobs:
           # assignee_trigger: "claude-bot"
           
           # Optional: Allow Claude to run specific commands
-          # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
+          allowed-tools: "read,write,edit,bash"
           
           # Optional: Add custom instructions for Claude to customize its behavior for your project
           # custom_instructions: |
