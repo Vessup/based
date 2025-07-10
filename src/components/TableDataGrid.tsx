@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpRight,
   ListFilter,
   MoreHorizontal,
@@ -54,6 +56,36 @@ const customGridStyles = `
   }
 `;
 
+// Custom sortable header renderer
+interface SortableHeaderProps {
+  column: { key: string; name: string };
+  sortColumn?: string;
+  sortDirection?: 'asc' | 'desc';
+  onSort: (columnKey: string) => void;
+}
+
+function SortableHeader({ column, sortColumn, sortDirection, onSort }: SortableHeaderProps) {
+  const isCurrentSort = sortColumn === column.key;
+  
+  return (
+    <div 
+      className="flex items-center justify-between w-full cursor-pointer select-none hover:bg-muted/50 px-2 py-1 -mx-2 -my-1"
+      onClick={() => onSort(column.key)}
+    >
+      <span>{column.name}</span>
+      {isCurrentSort && (
+        <span className="ml-1 text-muted-foreground">
+          {sortDirection === 'desc' ? (
+            <ArrowDown size={14} />
+          ) : (
+            <ArrowUp size={14} />
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface TableDataGridProps {
   columns: Column<Record<string, unknown>>[];
   data: Record<string, unknown>[];
@@ -80,6 +112,9 @@ interface TableDataGridProps {
   ) => void;
   showFilters: boolean;
   onShowFiltersChange: (show: boolean) => void;
+  sortColumn?: string;
+  sortDirection?: 'asc' | 'desc';
+  onColumnSort: (columnKey: string) => void;
 }
 
 export function TableDataGrid({
@@ -103,6 +138,9 @@ export function TableDataGrid({
   onFiltersChange,
   showFilters,
   onShowFiltersChange,
+  sortColumn,
+  sortDirection,
+  onColumnSort,
 }: TableDataGridProps) {
   const { theme } = useTheme();
   const router = useRouter();
@@ -219,12 +257,23 @@ export function TableDataGrid({
         col.key === "rdg-select-row" ||
         col.key === "rdg-select-column";
 
+      // Add custom header renderer for sortable columns (skip checkbox columns)
+      const headerRenderer = isCheckbox ? undefined : () => (
+        <SortableHeader
+          column={{ key: col.key, name: col.name || col.key }}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={onColumnSort}
+        />
+      );
+
       // If this column is a foreign key, add a custom formatter
       if (col.foreign_table_name && col.foreign_column_name) {
         return {
           ...col,
           cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
           headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+          headerRenderer,
           formatter: ({ row }: { row: Record<string, unknown> }) => {
             const value = row[col.key];
             if (value === undefined || value === null || value === "") {
@@ -253,6 +302,7 @@ export function TableDataGrid({
         ...col,
         cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
         headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+        headerRenderer,
       };
     },
   );

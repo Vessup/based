@@ -306,13 +306,21 @@ export async function getTableColumns(tableName: string) {
 }
 
 /**
- * Fetches records from a specific table with pagination
+ * Fetches records from a specific table with pagination and sorting
  * @param tableName The name of the table to query
  * @param page The page number (1-based)
  * @param pageSize The number of records per page
+ * @param sortColumn The column to sort by (optional)
+ * @param sortDirection The sort direction: 'asc' or 'desc' (optional)
  * @returns Object containing records and pagination info
  */
-export async function getTableData(tableName: string, page = 1, pageSize = 10) {
+export async function getTableData(
+  tableName: string, 
+  page = 1, 
+  pageSize = 10,
+  sortColumn?: string,
+  sortDirection?: 'asc' | 'desc'
+) {
   try {
     // Calculate offset
     const offset = (page - 1) * pageSize;
@@ -327,16 +335,33 @@ export async function getTableData(tableName: string, page = 1, pageSize = 10) {
 
     const total = Number(countResult[0].total);
 
-    // Get records with pagination
-    const records = await db`
-      SELECT *
-      FROM ${db(tableName)}
-      LIMIT ${pageSize}
-      OFFSET ${offset}
-    `;
+    // Build the base query
+    let query;
+    
+    if (sortColumn && sortDirection) {
+      // Validate sort direction
+      const direction = sortDirection.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+      
+      // Get records with pagination and sorting
+      query = await db`
+        SELECT *
+        FROM ${db(tableName)}
+        ORDER BY ${db(sortColumn)} ${db.unsafe(direction)}
+        LIMIT ${pageSize}
+        OFFSET ${offset}
+      `;
+    } else {
+      // Get records with pagination only
+      query = await db`
+        SELECT *
+        FROM ${db(tableName)}
+        LIMIT ${pageSize}
+        OFFSET ${offset}
+      `;
+    }
 
     return {
-      records,
+      records: query,
       pagination: {
         total,
         page,
