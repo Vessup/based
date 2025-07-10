@@ -105,15 +105,23 @@ export async function fetchDatabaseTables(schema = "public") {
 }
 
 /**
- * Server action to fetch table data with pagination
+ * Server action to fetch table data with pagination and sorting
  */
 export async function fetchTableData(
   tableName: string,
   page = 1,
   pageSize = 10,
+  sortColumn?: string,
+  sortDirection?: "asc" | "desc",
 ) {
   try {
-    const data = await getTableData(tableName, page, pageSize);
+    const data = await getTableData(
+      tableName,
+      page,
+      pageSize,
+      sortColumn,
+      sortDirection,
+    );
     const columns = await getTableColumns(tableName);
 
     return {

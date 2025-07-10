@@ -70,6 +70,15 @@ The repository includes a GitHub Action that automatically builds and publishes 
 - Published as a public image at `ghcr.io/[owner]/based`
 - Image tags match the git tag version (e.g., git tag `v1.2.3` creates Docker tags `1.2.3`, `1.2`, `1`, and `latest`)
 
+## Code Quality Workflow
+
+**IMPORTANT: After every task that changes code, Claude must run:**
+```bash
+bun check        # Run both format and lint with auto-fix
+```
+
+This ensures consistent code quality and catches issues before commits. If any manual fixes are needed after `bun check`, they must be addressed before considering the task complete.
+
 ## Important Notes
 
 - Always use `bun` instead of `npm` or `yarn`

@@ -367,7 +367,10 @@ export function AppSidebar() {
                                     setSchemaPopoverOpen(false);
                                     setSchemaToRename(schema);
                                     setNewSchemaNameForRename(schema);
-                                    setSchemaOperationStatus({ loading: false, error: null });
+                                    setSchemaOperationStatus({
+                                      loading: false,
+                                      error: null,
+                                    });
                                     setIsRenameSchemaDialogOpen(true);
                                   }}
                                 >
@@ -381,7 +384,10 @@ export function AppSidebar() {
                                     e.stopPropagation();
                                     setSchemaPopoverOpen(false);
                                     setSchemaToDelete(schema);
-                                    setSchemaOperationStatus({ loading: false, error: null });
+                                    setSchemaOperationStatus({
+                                      loading: false,
+                                      error: null,
+                                    });
                                     setIsDeleteSchemaDialogOpen(true);
                                   }}
                                 >
@@ -581,7 +587,9 @@ export function AppSidebar() {
               disabled={schemaOperationStatus.loading}
             />
             {schemaOperationStatus.error && (
-              <p className="text-red-500 text-sm mt-2">{schemaOperationStatus.error}</p>
+              <p className="text-red-500 text-sm mt-2">
+                {schemaOperationStatus.error}
+              </p>
             )}
           </div>
 
@@ -591,7 +599,9 @@ export function AppSidebar() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRenameSchema}
-              disabled={schemaOperationStatus.loading || !newSchemaNameForRename.trim()}
+              disabled={
+                schemaOperationStatus.loading || !newSchemaNameForRename.trim()
+              }
             >
               {schemaOperationStatus.loading ? "Renaming..." : "Rename"}
             </AlertDialogAction>

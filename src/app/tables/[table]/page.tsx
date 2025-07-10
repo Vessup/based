@@ -168,6 +168,9 @@ export default function TablePage() {
   const tableName = params.table as string;
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "20");
+  const sortColumn = searchParams.get("sortColumn") || "";
+  const sortDirection =
+    (searchParams.get("sortDirection") as "asc" | "desc") || undefined;
   const { theme } = useTheme();
   const router = useRouter();
 
@@ -369,7 +372,13 @@ export default function TablePage() {
       startNProgress();
 
       try {
-        const result = await fetchTableData(tableName, page, pageSize);
+        const result = await fetchTableData(
+          tableName,
+          page,
+          pageSize,
+          sortColumn || undefined,
+          sortDirection,
+        );
 
         if (result.error) {
           setError(result.error);
@@ -404,13 +413,53 @@ export default function TablePage() {
         doneNProgress();
       }
     },
-    [tableName, page, pageSize],
+    [tableName, page, pageSize, sortColumn, sortDirection],
   );
 
   // Function to handle manual refresh
   const handleRefresh = () => {
     loadTableData(true);
   };
+
+  // Function to handle column sorting
+  const handleColumnSort = useCallback(
+    (columnKey: string) => {
+      try {
+        const params = new URLSearchParams(Array.from(searchParams.entries()));
+
+        // Implement 3-state cycle: none -> desc -> asc -> none
+        let newSortDirection: "desc" | "asc" | undefined;
+
+        if (sortColumn === columnKey) {
+          // Same column clicked, cycle through states
+          if (sortDirection === "desc") {
+            newSortDirection = "asc";
+          } else if (sortDirection === "asc") {
+            // Remove sorting
+            params.delete("sortColumn");
+            params.delete("sortDirection");
+            router.push(`?${params.toString()}`);
+            return;
+          } else {
+            newSortDirection = "desc";
+          }
+        } else {
+          // Different column clicked, start with desc
+          newSortDirection = "desc";
+        }
+
+        params.set("sortColumn", columnKey);
+        params.set("sortDirection", newSortDirection);
+        params.set("page", "1"); // Reset to first page when sorting
+        router.push(`?${params.toString()}`);
+      } catch (error) {
+        console.error("Navigation error:", error);
+        // Optionally show user-friendly error message
+        // toast.error('Failed to sort column. Please try again.');
+      }
+    },
+    [sortColumn, sortDirection, searchParams, router],
+  );
 
   // Fetch data on component mount and when params change
   useEffect(() => {
@@ -555,6 +604,9 @@ export default function TablePage() {
         onFiltersChange={setFilters}
         showFilters={showFilters}
         onShowFiltersChange={setShowFilters}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onColumnSort={handleColumnSort}
       />
 
       <Toaster position="bottom-right" richColors />
