@@ -61,6 +61,15 @@ Required for database connection:
 - `POSTGRES_DB`
 - `POSTGRES_PORT`
 
+## CI/CD
+
+### Docker Image Publishing
+The repository includes a GitHub Action that automatically builds and publishes Docker images to GitHub Container Registry (ghcr.io):
+- Triggers on version tags (e.g., `v1.0.0`, `v2.1.3`) and manual dispatch
+- Uses Depot for fast, multi-platform builds (linux/amd64 and linux/arm64)
+- Published as a public image at `ghcr.io/[owner]/based`
+- Image tags match the git tag version (e.g., git tag `v1.2.3` creates Docker tags `1.2.3`, `1.2`, `1`, and `latest`)
+
 ## Important Notes
 
 - Always use `bun` instead of `npm` or `yarn`
