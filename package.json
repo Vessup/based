@@ -12,7 +12,10 @@
     "docker": "docker compose up",
     "initializeDb": "bun scripts/initializeDb.ts",
     "seedDb": "bun scripts/seedDb.ts",
-    "setupDb": "bun run initializeDb && bun run seedDb"
+    "setupDb": "bun run initializeDb && bun run seedDb",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
   },
   "dependencies": {
     "@faker-js/faker": "^9.8.0",
@@ -47,6 +50,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@playwright/test": "^1.53.2",
     "@tailwindcss/postcss": "^4",
     "@types/bun": "^1.2.12",
     "@types/node": "^20",

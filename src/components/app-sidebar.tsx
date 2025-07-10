@@ -106,6 +106,10 @@ export function AppSidebar() {
     useState(false);
   const [newSchemaNameForRename, setNewSchemaNameForRename] = useState("");
   const [schemaPopoverOpen, setSchemaPopoverOpen] = useState(false);
+  const [schemaOperationStatus, setSchemaOperationStatus] = useState<{
+    loading: boolean;
+    error: string | null;
+  }>({ loading: false, error: null });
 
   const params = useParams<{ table: string }>();
 
@@ -227,7 +231,7 @@ export function AppSidebar() {
     if (!schemaToDelete) return;
 
     try {
-      setDeleteStatus({ loading: true, error: null });
+      setSchemaOperationStatus({ loading: true, error: null });
       const result = await deleteDatabaseSchema(schemaToDelete);
 
       if (result.success) {
@@ -239,11 +243,12 @@ export function AppSidebar() {
         await loadSchemas();
         setIsDeleteSchemaDialogOpen(false);
         setSchemaToDelete(null);
+        setSchemaOperationStatus({ loading: false, error: null });
       } else {
-        setDeleteStatus({ loading: false, error: result.message });
+        setSchemaOperationStatus({ loading: false, error: result.message });
       }
     } catch (error) {
-      setDeleteStatus({ loading: false, error: `Error: ${error}` });
+      setSchemaOperationStatus({ loading: false, error: `Error: ${error}` });
     }
   };
 
@@ -252,7 +257,7 @@ export function AppSidebar() {
     if (!schemaToRename || !newSchemaNameForRename.trim()) return;
 
     try {
-      setDeleteStatus({ loading: true, error: null });
+      setSchemaOperationStatus({ loading: true, error: null });
       const result = await renameDatabaseSchema(
         schemaToRename,
         newSchemaNameForRename.trim(),
@@ -268,11 +273,12 @@ export function AppSidebar() {
         setIsRenameSchemaDialogOpen(false);
         setSchemaToRename(null);
         setNewSchemaNameForRename("");
+        setSchemaOperationStatus({ loading: false, error: null });
       } else {
-        setDeleteStatus({ loading: false, error: result.message });
+        setSchemaOperationStatus({ loading: false, error: result.message });
       }
     } catch (error) {
-      setDeleteStatus({ loading: false, error: `Error: ${error}` });
+      setSchemaOperationStatus({ loading: false, error: `Error: ${error}` });
     }
   };
 
@@ -336,13 +342,13 @@ export function AppSidebar() {
                         {schemas.map((schema) => (
                           <div
                             key={schema}
-                            className={`group flex items-center justify-between px-3 py-2 hover:bg-accent cursor-pointer ${
+                            className={`group flex items-center justify-between px-3 py-2 hover:bg-accent ${
                               schema === selectedSchema ? "bg-accent" : ""
                             }`}
                           >
                             <button
                               type="button"
-                              className="flex-1 text-left"
+                              className="flex-1 text-left cursor-pointer"
                               onClick={() => {
                                 handleSchemaChange(schema);
                                 setSchemaPopoverOpen(false);
@@ -351,42 +357,37 @@ export function AppSidebar() {
                               {schema}
                             </button>
                             {schema !== "public" && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSchemaToRename(schema);
-                                      setNewSchemaNameForRename(schema);
-                                      setIsRenameSchemaDialogOpen(true);
-                                      setSchemaPopoverOpen(false);
-                                    }}
-                                  >
-                                    <Edit2 className="mr-2 h-4 w-4" />
-                                    Rename
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      setSchemaToDelete(schema);
-                                      setIsDeleteSchemaDialogOpen(true);
-                                      setSchemaPopoverOpen(false);
-                                    }}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSchemaPopoverOpen(false);
+                                    setSchemaToRename(schema);
+                                    setNewSchemaNameForRename(schema);
+                                    setSchemaOperationStatus({ loading: false, error: null });
+                                    setIsRenameSchemaDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSchemaPopoverOpen(false);
+                                    setSchemaToDelete(schema);
+                                    setSchemaOperationStatus({ loading: false, error: null });
+                                    setIsDeleteSchemaDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -544,15 +545,15 @@ export function AppSidebar() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteStatus.loading}>
+            <AlertDialogCancel disabled={schemaOperationStatus.loading}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDeleteSchema}
-              disabled={deleteStatus.loading}
+              disabled={schemaOperationStatus.loading}
             >
-              {deleteStatus.loading ? "Deleting..." : "Delete"}
+              {schemaOperationStatus.loading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -577,22 +578,22 @@ export function AppSidebar() {
               value={newSchemaNameForRename}
               onChange={(e) => setNewSchemaNameForRename(e.target.value)}
               placeholder="New schema name"
-              disabled={deleteStatus.loading}
+              disabled={schemaOperationStatus.loading}
             />
-            {deleteStatus.error && (
-              <p className="text-red-500 text-sm mt-2">{deleteStatus.error}</p>
+            {schemaOperationStatus.error && (
+              <p className="text-red-500 text-sm mt-2">{schemaOperationStatus.error}</p>
             )}
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteStatus.loading}>
+            <AlertDialogCancel disabled={schemaOperationStatus.loading}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRenameSchema}
-              disabled={deleteStatus.loading || !newSchemaNameForRename.trim()}
+              disabled={schemaOperationStatus.loading || !newSchemaNameForRename.trim()}
             >
-              {deleteStatus.loading ? "Renaming..." : "Rename"}
+              {schemaOperationStatus.loading ? "Renaming..." : "Rename"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
