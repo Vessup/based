@@ -71,6 +71,7 @@ import {
   fetchDatabaseSchemas,
   fetchDatabaseTables,
   renameDatabaseSchema,
+  renameTableAction,
 } from "@/lib/actions";
 import { useParams } from "next/navigation";
 
@@ -87,6 +88,13 @@ export function AppSidebar() {
     loading: boolean;
     error: string | null;
   }>({ loading: false, error: null });
+
+  // State for table renaming
+  const [tableToRename, setTableToRename] = useState<string | null>(null);
+  const [isRenameTableDialogOpen, setIsRenameTableDialogOpen] = useState(false);
+  const [newTableName, setNewTableName] = useState("");
+  const [isRenamingTable, setIsRenamingTable] = useState(false);
+  const [renameTableError, setRenameTableError] = useState<string | null>(null);
 
   // State for creating a new schema
   const [isCreateSchemaDialogOpen, setIsCreateSchemaDialogOpen] =
@@ -282,6 +290,34 @@ export function AppSidebar() {
     }
   };
 
+  // Function to handle table renaming
+  const handleRenameTable = async () => {
+    if (!tableToRename || !newTableName.trim()) return;
+
+    try {
+      setIsRenamingTable(true);
+      setRenameTableError(null);
+      const result = await renameTableAction(
+        tableToRename,
+        newTableName.trim(),
+      );
+
+      if (result.success) {
+        // Refresh tables list
+        await loadTables();
+        setIsRenameTableDialogOpen(false);
+        setTableToRename(null);
+        setNewTableName("");
+      } else {
+        setRenameTableError(result.message || "Failed to rename table");
+      }
+    } catch (error) {
+      setRenameTableError(`Error: ${error}`);
+    } finally {
+      setIsRenamingTable(false);
+    }
+  };
+
   return (
     <>
       <Sidebar>
@@ -445,6 +481,19 @@ export function AppSidebar() {
                         <DropdownMenuContent side="right" align="start">
                           <DropdownMenuItem
                             onClick={() => {
+                              setTableToRename(tableName);
+                              setNewTableName(tableName);
+                              setRenameTableError(null);
+                              // Use setTimeout to ensure the dropdown is fully closed before opening the dialog
+                              setTimeout(() => {
+                                setIsRenameTableDialogOpen(true);
+                              }, 100);
+                            }}
+                          >
+                            <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
                               setTableToDelete(tableName);
                               // Use setTimeout to ensure the context menu is fully closed before opening the dialog
                               setTimeout(() => {
@@ -604,6 +653,46 @@ export function AppSidebar() {
               }
             >
               {schemaOperationStatus.loading ? "Renaming..." : "Rename"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Table Dialog */}
+      <AlertDialog
+        open={isRenameTableDialogOpen}
+        onOpenChange={setIsRenameTableDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Table</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new name for the table <strong>{tableToRename}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <Input
+              type="text"
+              value={newTableName}
+              onChange={(e) => setNewTableName(e.target.value)}
+              placeholder="New table name"
+              disabled={isRenamingTable}
+            />
+            {renameTableError && (
+              <p className="text-red-500 text-sm mt-2">{renameTableError}</p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRenamingTable}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRenameTable}
+              disabled={isRenamingTable || !newTableName.trim()}
+            >
+              {isRenamingTable ? "Renaming..." : "Rename"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

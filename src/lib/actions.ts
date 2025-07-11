@@ -12,6 +12,7 @@ import {
   getTables,
   insertTableRow,
   renameSchema,
+  renameTable,
 } from "./db";
 
 /**
@@ -233,6 +234,30 @@ export async function addTableRow(
       success: false,
       message: `Failed to add row to table ${tableName}`,
       record: null,
+      error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to rename a table
+ */
+export async function renameTableAction(
+  oldTableName: string,
+  newTableName: string,
+) {
+  try {
+    const result = await renameTable(oldTableName, newTableName);
+    return {
+      success: result.success,
+      message: result.message,
+      error: null,
+    };
+  } catch (error) {
+    console.error(`Error renaming table ${oldTableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to rename table ${oldTableName}`,
       error: String(error),
     };
   }

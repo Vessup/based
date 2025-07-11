@@ -528,6 +528,63 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
 }
 
 /**
+ * Renames a table in the database
+ * @param oldTableName The current name of the table
+ * @param newTableName The new name for the table
+ * @returns Object containing success status and message
+ */
+export async function renameTable(oldTableName: string, newTableName: string) {
+  try {
+    // First, verify the old table exists
+    const tableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = ${oldTableName}
+      ) AS exists;
+    `;
+
+    if (!tableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${oldTableName}' does not exist`,
+      };
+    }
+
+    // Check if new table name already exists
+    const newTableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = ${newTableName}
+      ) AS exists;
+    `;
+
+    if (newTableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${newTableName}' already exists`,
+      };
+    }
+
+    // Execute the rename operation
+    console.log(`Renaming table: ${oldTableName} to ${newTableName}`);
+    await db`ALTER TABLE ${db(oldTableName)} RENAME TO ${db(newTableName)};`;
+
+    return {
+      success: true,
+      message: `Successfully renamed table '${oldTableName}' to '${newTableName}'`,
+    };
+  } catch (error) {
+    console.error(`Error renaming table ${oldTableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to rename table: ${error}`,
+    };
+  }
+}
+
+/**
  * Deletes a table from the database
  * @param tableName The name of the table to delete
  * @returns Object containing success status and message
