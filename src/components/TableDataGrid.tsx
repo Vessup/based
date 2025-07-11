@@ -55,6 +55,25 @@ const customGridStyles = `
     margin: 0;
     padding: 0.5rem;
   }
+  .rdg-editor-container {
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 9999 !important;
+  }
+  .rdg-editor-container > div {
+    height: 100%;
+    overflow: visible !important;
+  }
+  /* Ensure the edit cell has high z-index and allows overflow */
+  .rdg-cell.rdg-editor-container {
+    overflow: visible !important;
+    z-index: 9999 !important;
+  }
+  /* Allow overflow on the row containing the editor */
+  .rdg-row:has(.rdg-editor-container) {
+    overflow: visible !important;
+    z-index: 9999 !important;
+  }
 `;
 
 // Custom sortable header renderer

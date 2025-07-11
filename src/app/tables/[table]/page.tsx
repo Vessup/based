@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type Column,
   DataGrid,
+  type RenderEditCellProps,
   SelectColumn,
   textEditor,
 } from "react-data-grid";
@@ -70,27 +71,192 @@ type PaginationInfo = {
   pageCount: number;
 };
 
-// Custom date editor component for react-data-grid
-interface EditorProps {
-  row: Record<string, unknown>;
-  column: { key: string };
-  onRowChange: (row: Record<string, unknown>) => void;
-  onClose: (commit: boolean) => void;
-}
+// Custom text editor with check/cancel buttons
+function TextEditorWithButtons({
+  row,
+  column,
+  onRowChange,
+  onClose,
+}: RenderEditCellProps<Record<string, unknown>>) {
+  const [value, setValue] = useState(
+    row[column.key] !== null && row[column.key] !== undefined
+      ? String(row[column.key])
+      : "",
+  );
 
-function DateEditor({ row, column, onRowChange, onClose }: EditorProps) {
-  const value = row[column.key]
-    ? new Date(row[column.key] as string)
-    : undefined;
+  const handleSave = () => {
+    onRowChange({ ...row, [column.key]: value }, true);
+  };
+
+  const handleCancel = () => {
+    onClose(false);
+  };
 
   return (
-    <DatePicker
-      date={value}
-      setDate={(date) => {
-        onRowChange({ ...row, [column.key]: date ? date.toISOString() : null });
-        onClose(true);
-      }}
-    />
+    <div className="relative w-full h-full">
+      <input
+        ref={(input) => input?.focus()}
+        className="w-full h-full px-2 py-1 border-0 outline-none bg-transparent"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleSave();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+      />
+      <div className="absolute -right-14 top-1/2 -translate-y-1/2 flex gap-1 bg-background border rounded shadow-sm z-50">
+        <button
+          type="button"
+          onClick={handleSave}
+          className="p-1 hover:bg-green-100 rounded-l text-green-600 border-r"
+          title="Save (Enter)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="Save"
+          >
+            <path
+              d="M13.5 4.5L6 12L2.5 8.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="p-1 hover:bg-red-100 rounded-r text-red-600"
+          title="Cancel (Esc)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="Cancel"
+          >
+            <path
+              d="M12 4L4 12M4 4L12 12"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DateEditor({
+  row,
+  column,
+  onRowChange,
+  onClose,
+}: RenderEditCellProps<Record<string, unknown>>) {
+  const [value, setValue] = useState(
+    row[column.key] ? new Date(row[column.key] as string) : undefined,
+  );
+
+  const handleSave = useCallback(() => {
+    onRowChange(
+      { ...row, [column.key]: value ? value.toISOString() : null },
+      true,
+    );
+  }, [value, row, column.key, onRowChange]);
+
+  const handleCancel = useCallback(() => {
+    onClose(false);
+  }, [onClose]);
+
+  useEffect(() => {
+    // Auto-focus when editor opens
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleCancel();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleCancel]);
+
+  return (
+    <div className="relative w-full h-full">
+      <div className="w-full h-full px-2 flex items-center">
+        <DatePicker
+          date={value}
+          setDate={(date) => {
+            setValue(date);
+          }}
+        />
+      </div>
+      <div className="absolute -right-14 top-1/2 -translate-y-1/2 flex gap-1 bg-background border rounded shadow-sm z-50">
+        <button
+          type="button"
+          onClick={handleSave}
+          className="p-1 hover:bg-green-100 rounded-l text-green-600 border-r"
+          title="Save"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="Save"
+          >
+            <path
+              d="M13.5 4.5L6 12L2.5 8.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="p-1 hover:bg-red-100 rounded-r text-red-600"
+          title="Cancel (Esc)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="Cancel"
+          >
+            <path
+              d="M12 4L4 12M4 4L12 12"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -498,7 +664,7 @@ export default function TablePage() {
         width: "max-content",
         resizable: true,
         formatter: isDate ? DateFormatter : undefined,
-        editable: true,
+        renderEditCell: isDate ? DateEditor : TextEditorWithButtons,
         foreign_table_name: column.foreign_table_name,
         foreign_column_name: column.foreign_column_name,
       } as Column<Record<string, unknown>> & {
