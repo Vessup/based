@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import NProgress from "nprogress";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -33,12 +33,21 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -123,6 +132,11 @@ export function AppSidebar() {
 
   // State for table search
   const [tableSearch, setTableSearch] = useState("");
+
+  // Refs for dialog inputs
+  const createSchemaInputRef = useRef<HTMLInputElement>(null);
+  const renameSchemaInputRef = useRef<HTMLInputElement>(null);
+  const renameTableInputRef = useRef<HTMLInputElement>(null);
 
   // Function to load schemas
   const loadSchemas = useCallback(async () => {
@@ -216,6 +230,46 @@ export function AppSidebar() {
     loadSchemas();
     loadTables();
   }, [loadSchemas, loadTables]);
+
+  // Focus create schema input when dialog opens
+  useEffect(() => {
+    if (isCreateSchemaDialogOpen) {
+      const timer = setTimeout(() => {
+        createSchemaInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isCreateSchemaDialogOpen]);
+
+  // Focus rename schema input when dialog opens
+  useEffect(() => {
+    if (isRenameSchemaDialogOpen) {
+      const timer = setTimeout(() => {
+        const input = renameSchemaInputRef.current;
+        if (input) {
+          input.focus();
+          // Set cursor at the end
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isRenameSchemaDialogOpen]);
+
+  // Focus rename table input when dialog opens
+  useEffect(() => {
+    if (isRenameTableDialogOpen) {
+      const timer = setTimeout(() => {
+        const input = renameTableInputRef.current;
+        if (input) {
+          input.focus();
+          // Set cursor at the end
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isRenameTableDialogOpen]);
 
   // Function to handle table deletion
   const handleDeleteTable = async () => {
@@ -543,45 +597,64 @@ export function AppSidebar() {
       </AlertDialog>
 
       {/* Create Schema Dialog */}
-      <AlertDialog
+      <Dialog
         open={isCreateSchemaDialogOpen}
         onOpenChange={setIsCreateSchemaDialogOpen}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Create New Schema</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Schema</DialogTitle>
+            <DialogDescription>
               Enter a name for the new schema.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="py-4">
-            <Input
-              type="text"
-              value={newSchemaName}
-              onChange={(e) => setNewSchemaName(e.target.value)}
-              placeholder="Schema name"
-              disabled={isCreatingSchema}
-            />
-            {createSchemaError && (
-              <p className="text-red-500 text-sm mt-2">{createSchemaError}</p>
-            )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="schema-name">Schema name</Label>
+              <Input
+                ref={createSchemaInputRef}
+                id="schema-name"
+                type="text"
+                value={newSchemaName}
+                onChange={(e) => setNewSchemaName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    newSchemaName.trim() &&
+                    !isCreatingSchema
+                  ) {
+                    e.preventDefault();
+                    handleCreateSchema();
+                  }
+                }}
+                placeholder="Enter schema name"
+                disabled={isCreatingSchema}
+              />
+              {createSchemaError && (
+                <p className="text-red-500 text-sm mt-2">{createSchemaError}</p>
+              )}
+            </div>
           </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCreatingSchema}>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateSchemaDialogOpen(false)}
+              disabled={isCreatingSchema}
+            >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
               onClick={handleCreateSchema}
               disabled={isCreatingSchema}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               {isCreatingSchema ? "Creating..." : "Create Schema"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Schema Dialog */}
       <AlertDialog
@@ -615,88 +688,126 @@ export function AppSidebar() {
       </AlertDialog>
 
       {/* Rename Schema Dialog */}
-      <AlertDialog
+      <Dialog
         open={isRenameSchemaDialogOpen}
         onOpenChange={setIsRenameSchemaDialogOpen}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rename Schema</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rename Schema</DialogTitle>
+            <DialogDescription>
               Enter a new name for the schema <strong>{schemaToRename}</strong>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="py-4">
-            <Input
-              type="text"
-              value={newSchemaNameForRename}
-              onChange={(e) => setNewSchemaNameForRename(e.target.value)}
-              placeholder="New schema name"
-              disabled={schemaOperationStatus.loading}
-            />
-            {schemaOperationStatus.error && (
-              <p className="text-red-500 text-sm mt-2">
-                {schemaOperationStatus.error}
-              </p>
-            )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="new-schema-name">New schema name</Label>
+              <Input
+                ref={renameSchemaInputRef}
+                id="new-schema-name"
+                type="text"
+                value={newSchemaNameForRename}
+                onChange={(e) => setNewSchemaNameForRename(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    newSchemaNameForRename.trim() &&
+                    !schemaOperationStatus.loading
+                  ) {
+                    e.preventDefault();
+                    handleRenameSchema();
+                  }
+                }}
+                placeholder="Enter new schema name"
+                disabled={schemaOperationStatus.loading}
+              />
+              {schemaOperationStatus.error && (
+                <p className="text-red-500 text-sm mt-2">
+                  {schemaOperationStatus.error}
+                </p>
+              )}
+            </div>
           </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={schemaOperationStatus.loading}>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameSchemaDialogOpen(false)}
+              disabled={schemaOperationStatus.loading}
+            >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
               onClick={handleRenameSchema}
               disabled={
                 schemaOperationStatus.loading || !newSchemaNameForRename.trim()
               }
             >
               {schemaOperationStatus.loading ? "Renaming..." : "Rename"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Rename Table Dialog */}
-      <AlertDialog
+      <Dialog
         open={isRenameTableDialogOpen}
         onOpenChange={setIsRenameTableDialogOpen}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rename Table</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rename Table</DialogTitle>
+            <DialogDescription>
               Enter a new name for the table <strong>{tableToRename}</strong>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="py-4">
-            <Input
-              type="text"
-              value={newTableName}
-              onChange={(e) => setNewTableName(e.target.value)}
-              placeholder="New table name"
-              disabled={isRenamingTable}
-            />
-            {renameTableError && (
-              <p className="text-red-500 text-sm mt-2">{renameTableError}</p>
-            )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="new-table-name">New table name</Label>
+              <Input
+                ref={renameTableInputRef}
+                id="new-table-name"
+                type="text"
+                value={newTableName}
+                onChange={(e) => setNewTableName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    newTableName.trim() &&
+                    !isRenamingTable
+                  ) {
+                    e.preventDefault();
+                    handleRenameTable();
+                  }
+                }}
+                placeholder="Enter new table name"
+                disabled={isRenamingTable}
+              />
+              {renameTableError && (
+                <p className="text-red-500 text-sm mt-2">{renameTableError}</p>
+              )}
+            </div>
           </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRenamingTable}>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameTableDialogOpen(false)}
+              disabled={isRenamingTable}
+            >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
               onClick={handleRenameTable}
               disabled={isRenamingTable || !newTableName.trim()}
             >
               {isRenamingTable ? "Renaming..." : "Rename"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

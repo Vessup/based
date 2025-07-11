@@ -937,6 +937,12 @@ function AddRecordDialog({
                     onChange={(e) =>
                       handleInputChange(column.column_name, e.target.value)
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isSubmitting) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
                     placeholder={`Enter ${column.column_name}`}
                   />
                 )}
