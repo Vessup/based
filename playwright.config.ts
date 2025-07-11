@@ -15,6 +15,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: "html",
+  /* Global setup to run before all tests */
+  globalSetup: "./tests/global-setup.ts",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -41,6 +43,11 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       PORT: "3002",
+      POSTGRES_PORT: "5433",
+      POSTGRES_DB: "based_test",
+      POSTGRES_USER: "postgres",
+      POSTGRES_PASSWORD: "postgres",
+      DB_HOST: "localhost",
     },
   },
 });
