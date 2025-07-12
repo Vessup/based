@@ -811,3 +811,84 @@ export async function updateTableCell(
     };
   }
 }
+
+/**
+ * Checks if the database connection is healthy
+ * @returns Object containing connection status and information
+ */
+export async function checkDatabaseHealth() {
+  try {
+    // Simple connectivity test
+    const result =
+      await db`SELECT NOW() as server_time, version() as server_version`;
+
+    return {
+      connected: true,
+      serverTime: result[0]?.server_time,
+      serverVersion: result[0]?.server_version,
+      message: "Database connection is healthy",
+    };
+  } catch (error) {
+    console.error("Database health check failed:", error);
+    return {
+      connected: false,
+      serverTime: null,
+      serverVersion: null,
+      message: `Database connection failed: ${error}`,
+    };
+  }
+}
+
+/**
+ * Gets database statistics for the homepage
+ * @returns Object containing database statistics
+ */
+export async function getDatabaseStats() {
+  try {
+    // Get database size
+    const sizeResult = await db`
+      SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;
+    `;
+
+    // Get total number of tables across all schemas
+    const tableCountResult = await db`
+      SELECT COUNT(*) as table_count
+      FROM information_schema.tables
+      WHERE table_type = 'BASE TABLE'
+      AND table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast');
+    `;
+
+    // Get total number of schemas (excluding system schemas)
+    const schemaCountResult = await db`
+      SELECT COUNT(*) as schema_count
+      FROM information_schema.schemata
+      WHERE schema_name NOT LIKE 'pg_%'
+      AND schema_name != 'information_schema';
+    `;
+
+    // Get database name and current user
+    const dbInfoResult = await db`
+      SELECT current_database() as database_name, current_user as current_user;
+    `;
+
+    return {
+      success: true,
+      databaseSize: sizeResult[0]?.database_size || "Unknown",
+      tableCount: Number(tableCountResult[0]?.table_count) || 0,
+      schemaCount: Number(schemaCountResult[0]?.schema_count) || 0,
+      databaseName: dbInfoResult[0]?.database_name || "Unknown",
+      currentUser: dbInfoResult[0]?.current_user || "Unknown",
+    };
+  } catch (error) {
+    console.error("Error fetching database stats:", error);
+    return {
+      success: false,
+      databaseSize: "Unknown",
+      tableCount: 0,
+      schemaCount: 0,
+      databaseName: "Unknown",
+      currentUser: "Unknown",
+      error: `Failed to fetch database stats: ${error}`,
+    };
+  }
+}
