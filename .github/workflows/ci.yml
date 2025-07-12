@@ -69,7 +69,7 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Run tests
-        run: bun test
+        run: bun run test
         env:
           POSTGRES_TEST_PORT: 5433
           POSTGRES_TEST_USER: postgres
