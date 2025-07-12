@@ -13,14 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   addTableRow,
   deleteRows,
   fetchTableData,
@@ -29,7 +21,7 @@ import {
 import { format, isValid, parseISO } from "date-fns";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Column,
   DataGrid,
@@ -278,6 +270,192 @@ function DateFormatter({ value }: { value: unknown }) {
   return String(value);
 }
 
+// Component for new row inputs
+interface NewRowFormatterProps {
+  row: Record<string, unknown>;
+  column: { key: string; name: string };
+  onUpdate: (columnKey: string, value: unknown) => void;
+  dataType?: string;
+  onSave?: () => void;
+  onCancel?: () => void;
+  isFirstColumn?: boolean;
+}
+
+function NewRowFormatter({
+  row,
+  column,
+  onUpdate,
+  dataType,
+  onSave,
+  onCancel,
+  isFirstColumn,
+}: NewRowFormatterProps) {
+  console.log(
+    "NewRowFormatter rendered for column:",
+    column.key,
+    "isFirstColumn:",
+    isFirstColumn,
+  );
+
+  // Debug: Check if this component is actually being rendered
+  useEffect(() => {
+    console.log(
+      `NewRowFormatter mounted for ${column.key}, isFirstColumn: ${isFirstColumn}`,
+    );
+    return () => {
+      console.log(`NewRowFormatter unmounted for ${column.key}`);
+    };
+  }, [column.key, isFirstColumn]);
+
+  // Use local state to avoid re-rendering issues
+  const [localValue, setLocalValue] = useState(row[column.key] ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (newValue: unknown) => {
+    setLocalValue(newValue);
+    onUpdate(column.key, newValue);
+  };
+
+  const isDateColumn =
+    dataType &&
+    (dataType.toLowerCase().includes("date") ||
+      dataType.toLowerCase().includes("timestamp"));
+
+  const isBooleanColumn = dataType?.toLowerCase().includes("bool");
+
+  const isNumberColumn =
+    dataType &&
+    (dataType.toLowerCase().includes("int") ||
+      dataType.toLowerCase().includes("numeric") ||
+      dataType.toLowerCase().includes("float") ||
+      dataType.toLowerCase().includes("double") ||
+      dataType.toLowerCase().includes("decimal"));
+
+  // Focus the input when it's first rendered (only for the first column)
+  useEffect(() => {
+    if (isFirstColumn) {
+      console.log(
+        `Focus attempt for column ${column.key}, isFirstColumn: ${isFirstColumn}`,
+      );
+
+      // Use MutationObserver to detect when the input is actually added to the DOM
+      const observer = new MutationObserver(() => {
+        if (inputRef.current) {
+          console.log(
+            "MutationObserver: Focusing input for column:",
+            column.key,
+          );
+          inputRef.current.focus();
+          inputRef.current.select();
+          observer.disconnect();
+        }
+      });
+
+      // Start observing the parent container for changes
+      const container = inputRef.current?.parentElement;
+      if (container) {
+        observer.observe(container, { childList: true, subtree: true });
+      }
+
+      // Also try multiple methods to ensure focus
+      const focusInput = () => {
+        if (inputRef.current) {
+          console.log("Direct focus attempt for column:", column.key);
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      };
+
+      // Try immediate focus
+      focusInput();
+
+      // Try with multiple timeouts
+      setTimeout(focusInput, 0);
+      setTimeout(focusInput, 50);
+      setTimeout(focusInput, 100);
+      setTimeout(focusInput, 200);
+
+      // Try with requestAnimationFrame
+      requestAnimationFrame(() => {
+        focusInput();
+        requestAnimationFrame(focusInput);
+      });
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, [isFirstColumn, column.key]);
+
+  if (isDateColumn) {
+    return (
+      <div className="h-full flex items-center px-2">
+        <DatePicker
+          date={localValue ? new Date(localValue as string) : undefined}
+          setDate={(date) => handleChange(date ? date.toISOString() : null)}
+        />
+      </div>
+    );
+  }
+
+  if (isBooleanColumn) {
+    return (
+      <div className="h-full flex items-center px-2">
+        <input
+          type="checkbox"
+          checked={Boolean(localValue)}
+          onChange={(e) => handleChange(e.target.checked)}
+          className="w-4 h-4"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const checkbox = e.currentTarget;
+              checkbox.checked = !checkbox.checked;
+              handleChange(checkbox.checked);
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel?.();
+            } else if (e.key === "Enter" && e.ctrlKey) {
+              e.preventDefault();
+              onSave?.();
+            } else if (e.key === "Tab") {
+              e.stopPropagation();
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type={isNumberColumn ? "number" : "text"}
+      className="w-full h-full px-2 py-1 border-0 outline-none bg-transparent"
+      style={{ minHeight: "35px", backgroundColor: "white", color: "black" }}
+      value={String(localValue)}
+      onChange={(e) => handleChange(e.target.value)}
+      placeholder={`Enter ${column.name}`}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel?.();
+        } else if (e.key === "Enter" && e.ctrlKey) {
+          e.preventDefault();
+          onSave?.();
+        } else if (e.key === "Tab") {
+          // Don't prevent default - let the browser handle tab navigation
+          e.stopPropagation(); // Stop react-data-grid from intercepting
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
 // Helper to start NProgress if not already started
 function startNProgress() {
   if (!NProgress.isStarted()) {
@@ -287,6 +465,29 @@ function startNProgress() {
 
 function doneNProgress() {
   NProgress.done();
+}
+
+// Helper to show error toast with copy button
+function showError(message: string, error?: unknown) {
+  const errorMessage = error ? `${message}: ${error}` : message;
+  console.error("Error:", errorMessage, error);
+
+  toast.error(errorMessage, {
+    duration: 10000, // Show for 10 seconds
+    action: {
+      label: "Copy",
+      onClick: () => {
+        navigator.clipboard
+          .writeText(errorMessage)
+          .then(() => {
+            toast.success("Error copied to clipboard");
+          })
+          .catch((err) => {
+            console.error("Failed to copy error:", err);
+          });
+      },
+    },
+  });
 }
 
 function parseFiltersFromQuery(
@@ -363,7 +564,8 @@ export default function TablePage() {
   >(null);
 
   // State for adding new record
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newRowId, setNewRowId] = useState<string | null>(null);
+  const [newRowData, setNewRowData] = useState<Record<string, unknown>>({});
   const [isAddingRecord, setIsAddingRecord] = useState(false);
 
   // State for filters and filter visibility, synced with URL
@@ -415,10 +617,10 @@ export default function TablePage() {
         // Reload the data
         loadTableData();
       } else {
-        toast.error(result.message || "Failed to delete rows");
+        showError(result.message || "Failed to delete rows");
       }
     } catch (error) {
-      toast.error(`Error: ${error}`);
+      showError("Error deleting rows", error);
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
@@ -440,10 +642,10 @@ export default function TablePage() {
         // Reload the data
         loadTableData();
       } else {
-        toast.error(result.message || "Failed to delete row");
+        showError(result.message || "Failed to delete row");
       }
     } catch (error) {
-      toast.error(`Error: ${error}`);
+      showError("Error deleting row", error);
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
@@ -458,29 +660,6 @@ export default function TablePage() {
       dataType.toLowerCase().includes("date") ||
       dataType.toLowerCase().includes("timestamp")
     );
-  };
-
-  // Handle adding a new record
-  const handleAddRecord = async (data: Record<string, unknown>) => {
-    setIsAddingRecord(true);
-    startNProgress();
-    try {
-      const result = await addTableRow(tableName, data);
-
-      if (result.success) {
-        toast.success("Record added successfully");
-        // Reload the data to show the new record
-        loadTableData();
-      } else {
-        toast.error(result.message || "Failed to add record");
-      }
-    } catch (error) {
-      toast.error(`Error adding record: ${error}`);
-    } finally {
-      setIsAddingRecord(false);
-      setIsAddDialogOpen(false);
-      doneNProgress();
-    }
   };
 
   // Handle cell edit
@@ -511,12 +690,12 @@ export default function TablePage() {
           }),
         );
       } else {
-        toast.error(result.message || "Failed to update cell");
+        showError(result.message || "Failed to update cell");
         // Reload the data to revert changes
         loadTableData();
       }
     } catch (error) {
-      toast.error(`Error updating cell: ${error}`);
+      showError("Error updating cell", error);
       // Reload the data to revert changes
       loadTableData();
     } finally {
@@ -548,6 +727,7 @@ export default function TablePage() {
 
         if (result.error) {
           setError(result.error);
+          showError("Failed to load table data", result.error);
         } else {
           // Convert any Date objects to ISO strings to avoid React rendering issues
           const processedData = result.data.records.map(
@@ -572,7 +752,9 @@ export default function TablePage() {
           console.log("Loaded columns:", result.columns);
         }
       } catch (err) {
-        setError(`Failed to load table data: ${err}`);
+        const errorMessage = `Failed to load table data: ${err}`;
+        setError(errorMessage);
+        showError("Failed to load table data", err);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -586,6 +768,125 @@ export default function TablePage() {
   const handleRefresh = () => {
     loadTableData(true);
   };
+
+  // Function to handle adding a new inline row
+  const handleAddInlineRow = () => {
+    // If there's already a new row being added, don't add another
+    if (newRowId) return;
+
+    // Generate a temporary ID for the new row
+    const tempId = `new-${Date.now()}`;
+    setNewRowId(tempId);
+
+    // Create a new empty row with empty values
+    const newRow: Record<string, unknown> = {};
+
+    // Initialize all columns with empty values
+    for (const col of columns) {
+      // Initialize all columns with empty strings
+      newRow[col.column_name] = "";
+    }
+
+    // Set the temporary ID after initializing columns to avoid overwriting
+    newRow.id = tempId;
+    // Also try common variations
+    newRow.ID = tempId;
+    newRow.uuid = tempId;
+    newRow.UUID = tempId;
+
+    // Store the new row data separately
+    setNewRowData(newRow);
+
+    // Add the new row to the beginning of the data
+    const newData = [newRow, ...data];
+    console.log("Adding new row to data:", newRow);
+    console.log("New data array:", newData);
+    setData(newData);
+
+    // Focus will be handled by the NewRowFormatter component
+    // Also try to focus after a delay to ensure the row is rendered
+    // Try multiple times with increasing delays
+    const focusNewRow = () => {
+      const inputs = document.querySelectorAll(
+        ".rdg-row input, .rdg input[type='text'], .rdg input[type='number']",
+      );
+      console.log("Found inputs:", inputs.length);
+
+      // Find the input in the new row (should be in the first row)
+      for (const input of inputs) {
+        const row = input.closest(".rdg-row");
+        if (row && input instanceof HTMLInputElement) {
+          // Check if this is in the new row by checking if it has our placeholder
+          if (input.placeholder?.startsWith("Enter ")) {
+            console.log("Found new row input, focusing:", input);
+            input.focus();
+            input.select();
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    // Try multiple times
+    setTimeout(() => {
+      if (!focusNewRow()) setTimeout(focusNewRow, 50);
+    }, 50);
+    setTimeout(() => {
+      if (!focusNewRow()) setTimeout(focusNewRow, 100);
+    }, 150);
+    setTimeout(() => {
+      if (!focusNewRow()) setTimeout(focusNewRow, 200);
+    }, 300);
+    setTimeout(() => {
+      if (!focusNewRow()) setTimeout(focusNewRow, 300);
+    }, 500);
+
+    // Also apply styles to the new row
+    setTimeout(() => {
+      const rows = document.querySelectorAll(".rdg-row");
+      console.log("Checking rows for styling:", rows.length);
+
+      // Find the row that contains our new row inputs
+      for (const row of rows) {
+        const hasNewRowInput = row.querySelector(
+          'input[placeholder^="Enter "]',
+        );
+        if (hasNewRowInput) {
+          console.log("Found new row, applying styles");
+          const rowElement = row as HTMLElement;
+          rowElement.style.backgroundColor =
+            theme === "light" ? "rgb(239 246 255)" : "rgb(30 58 138 / 0.3)";
+          rowElement.style.outline = "2px solid rgb(59 130 246)";
+          rowElement.style.outlineOffset = "-2px";
+          rowElement.style.position = "relative";
+          rowElement.style.zIndex = "10";
+
+          // Also style all cells in the row
+          const cells = rowElement.querySelectorAll(".rdg-cell");
+          for (const cell of cells) {
+            (cell as HTMLElement).style.backgroundColor =
+              theme === "light" ? "rgb(239 246 255)" : "rgb(30 58 138 / 0.3)";
+          }
+          break; // Found the row, stop searching
+        }
+      }
+    }, 100);
+  };
+
+  // Function to update new row data
+  const handleNewRowUpdate = useCallback(
+    (columnKey: string, value: unknown) => {
+      setNewRowData((prev) => ({
+        ...prev,
+        [columnKey]: value,
+      }));
+
+      // Don't update the data array - this causes re-renders and focus loss
+      // We'll use the newRowData state when saving instead
+    },
+    [],
+  );
 
   // Function to handle column sorting
   const handleColumnSort = useCallback(
@@ -627,11 +928,6 @@ export default function TablePage() {
     [sortColumn, sortDirection, searchParams, router],
   );
 
-  // Fetch data on component mount and when params change
-  useEffect(() => {
-    loadTableData();
-  }, [loadTableData]);
-
   // Function to determine if a column is a date type - defined inside the component to avoid recreating
   const checkIsDateColumn = useCallback((dataType: string) => {
     return (
@@ -647,12 +943,113 @@ export default function TablePage() {
     setIsDeleteDialogOpen(true);
   }, []);
 
+  // Function to save new row
+  const handleSaveNewRow = useCallback(async () => {
+    if (!newRowId) return;
+
+    // Prepare data for insertion
+    const dataToInsert = Object.entries(newRowData).reduce(
+      (acc, [key, value]) => {
+        // Skip the temporary ID fields if they still have the temp value
+        if (
+          (key === "id" || key === "ID" || key === "uuid" || key === "UUID") &&
+          typeof value === "string" &&
+          value.startsWith("new-")
+        ) {
+          return acc;
+        }
+
+        // Include non-empty values
+        if (value !== "" && value !== undefined && value !== null) {
+          acc[key] = value;
+        }
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
+
+    try {
+      setIsAddingRecord(true);
+      startNProgress();
+
+      console.log("newRowData before processing:", newRowData);
+      console.log("Attempting to insert data:", dataToInsert);
+      const result = await addTableRow(tableName, dataToInsert);
+      console.log("Insert result:", result);
+
+      if (result.success) {
+        toast.success("Record added successfully");
+        setNewRowId(null);
+        setNewRowData({});
+        // Reload to show the actual saved record with real ID
+        loadTableData();
+      } else {
+        showError(result.message || "Failed to add record");
+      }
+    } catch (error) {
+      showError("Error adding record", error);
+    } finally {
+      setIsAddingRecord(false);
+      doneNProgress();
+    }
+  }, [newRowId, newRowData, tableName, loadTableData]);
+
+  // Function to cancel new row
+  const handleCancelNewRow = useCallback(() => {
+    if (!newRowId) return;
+
+    // Remove the new row from data
+    setData((prevData) =>
+      prevData.filter(
+        (row) => String(row.id || row.ID || row.uuid || row.UUID) !== newRowId,
+      ),
+    );
+    setNewRowId(null);
+    setNewRowData({});
+  }, [newRowId]);
+
+  // Fetch data on component mount and when params change
+  useEffect(() => {
+    loadTableData();
+  }, [loadTableData]);
+
+  // Global keyboard listener for new row
+  useEffect(() => {
+    if (!newRowId) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleCancelNewRow();
+      } else if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        handleSaveNewRow();
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [newRowId, handleCancelNewRow, handleSaveNewRow]);
+
   // Create grid columns based on database columns
   const gridColumns = useMemo(() => {
     if (!columns.length) return [];
 
-    // Add select column for row selection
-    const cols: Column<Record<string, unknown>>[] = [SelectColumn];
+    // Add select column for row selection with custom logic to exclude new rows
+    const customSelectColumn: Column<Record<string, unknown>> = {
+      ...SelectColumn,
+      renderCell: (props) => {
+        const rowId = String(
+          props.row.id || props.row.ID || props.row.uuid || props.row.UUID,
+        );
+        if (newRowId && rowId === newRowId) {
+          // Don't render checkbox for new rows
+          return null;
+        }
+        return SelectColumn.renderCell?.(props);
+      },
+    };
+    const cols: Column<Record<string, unknown>>[] = [customSelectColumn];
 
     // Add columns from database
     for (const column of columns) {
@@ -663,8 +1060,68 @@ export default function TablePage() {
         name: column.column_name,
         width: "max-content",
         resizable: true,
-        formatter: isDate ? DateFormatter : undefined,
-        renderEditCell: isDate ? DateEditor : TextEditorWithButtons,
+        renderCell: (props) => {
+          const rowId = String(
+            props.row.id || props.row.ID || props.row.uuid || props.row.UUID,
+          );
+
+          // Debug all rows
+          console.log(
+            `renderCell called for column ${column.column_name}, rowId: ${rowId}, row:`,
+            props.row,
+          );
+
+          // Use custom formatter for new row
+          if (rowId.startsWith("new-")) {
+            const isFirst = columns[0]?.column_name === column.column_name;
+            console.log(
+              `✅ RENDERING NEW ROW CELL! column: ${column.column_name}, isFirst: ${isFirst}, rowId: ${rowId}`,
+            );
+            return (
+              <div
+                className="w-full h-full"
+                style={{ backgroundColor: "rgba(59, 130, 246, 0.1)" }}
+              >
+                <NewRowFormatter
+                  row={newRowData}
+                  column={{ key: column.column_name, name: column.column_name }}
+                  onUpdate={handleNewRowUpdate}
+                  dataType={column.data_type}
+                  onSave={handleSaveNewRow}
+                  onCancel={handleCancelNewRow}
+                  isFirstColumn={isFirst} // Focus first column
+                />
+              </div>
+            );
+          }
+
+          // Use date formatter for date columns
+          if (isDate) {
+            return <DateFormatter value={props.row[column.column_name]} />;
+          }
+
+          // Default formatter
+          const value = props.row[column.column_name];
+          if (value === null || value === undefined) {
+            return <span className="text-gray-400">NULL</span>;
+          }
+          return String(value);
+        },
+        renderEditCell: (props) => {
+          const rowId = String(
+            props.row.id || props.row.ID || props.row.uuid || props.row.UUID,
+          );
+          // Don't allow editing for new rows (they use inline inputs)
+          if (newRowId && rowId === newRowId) {
+            return null;
+          }
+          return isDate ? DateEditor(props) : TextEditorWithButtons(props);
+        },
+        editable: (row) => {
+          const rowId = String(row.id || row.ID || row.uuid || row.UUID);
+          // Disable normal editing for new rows
+          return !(newRowId && rowId === newRowId);
+        },
         foreign_table_name: column.foreign_table_name,
         foreign_column_name: column.foreign_column_name,
       } as Column<Record<string, unknown>> & {
@@ -672,8 +1129,17 @@ export default function TablePage() {
         foreign_column_name?: string;
       });
     }
+
     return cols;
-  }, [columns, checkIsDateColumn]);
+  }, [
+    columns,
+    checkIsDateColumn,
+    newRowId,
+    newRowData,
+    handleSaveNewRow,
+    handleCancelNewRow,
+    handleNewRowUpdate,
+  ]);
 
   // Handle row selection changes
   const handleRowSelectionChange = (selectedRows: Set<string>) => {
@@ -681,7 +1147,7 @@ export default function TablePage() {
   };
 
   // Handle cell changes
-  const handleCellChange = (
+  const handleCellChange = async (
     newRows: Record<string, unknown>[],
     { indexes, column }: { indexes: number[]; column: { key: string } },
   ) => {
@@ -705,7 +1171,14 @@ export default function TablePage() {
     // Update the data
     setData(processedRows);
 
-    // Save the change to the database
+    // Check if this is a new row
+    if (newRowId && rowKey === newRowId) {
+      // Don't save individual cell edits for new rows
+      // We'll save the entire row when the user is done editing
+      return;
+    }
+
+    // Save the change to the database for existing rows
     handleCellEdit(rowKey, columnName, value);
   };
 
@@ -749,10 +1222,11 @@ export default function TablePage() {
         onRowsChange={handleCellChange}
         pagination={pagination}
         onRefresh={handleRefresh}
-        onAddRecord={() => setIsAddDialogOpen(true)}
+        onAddRecord={handleAddInlineRow}
         onDeleteSelected={openDeleteDialog}
         refreshing={refreshing}
         isDeleting={isDeleting}
+        isAddingNewRow={!!newRowId}
         currentPage={pagination.page}
         pageSize={pagination.pageSize}
         pageCount={pagination.pageCount}
@@ -777,14 +1251,48 @@ export default function TablePage() {
 
       <Toaster position="bottom-right" richColors />
 
-      {/* Add Record Dialog */}
-      <AddRecordDialog
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        columns={columns}
-        tableName={tableName}
-        onAddRecord={handleAddRecord}
-      />
+      {/* Floating save/cancel bar for new row */}
+      {newRowId && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-background border rounded-lg shadow-lg p-3 flex items-center gap-3 z-50">
+          <span className="text-sm text-muted-foreground">
+            Adding new record...
+          </span>
+          <Button
+            size="sm"
+            onClick={handleSaveNewRow}
+            disabled={isAddingRecord}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="mr-2"
+              role="img"
+              aria-label="Save"
+            >
+              <path
+                d="M13.5 4.5L6 12L2.5 8.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Save (Ctrl+Enter)
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCancelNewRow}
+            disabled={isAddingRecord}
+          >
+            Cancel (Esc)
+          </Button>
+        </div>
+      )}
 
       <AlertDialog
         open={isDeleteDialogOpen}
@@ -825,141 +1333,5 @@ export default function TablePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-// Add Record Dialog
-function AddRecordDialog({
-  isOpen,
-  onClose,
-  columns,
-  tableName,
-  onAddRecord,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  columns: ColumnInfo[];
-  tableName: string;
-  onAddRecord: (data: Record<string, unknown>) => Promise<void>;
-}) {
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({});
-      setIsSubmitting(false);
-    }
-  }, [isOpen]);
-
-  const handleInputChange = (columnName: string, value: unknown) => {
-    setFormData((prev) => ({
-      ...prev,
-      [columnName]: value,
-    }));
-  };
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    startNProgress();
-    try {
-      await onAddRecord(formData);
-      onClose();
-    } catch (error) {
-      console.error("Error adding record:", error);
-    } finally {
-      setIsSubmitting(false);
-      doneNProgress();
-    }
-  };
-
-  const isDateColumn = (dataType: string) => {
-    return (
-      dataType.toLowerCase().includes("date") ||
-      dataType.toLowerCase().includes("timestamp")
-    );
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Record to {tableName}</DialogTitle>
-          <DialogDescription>
-            Fill in the fields below to add a new record to the table.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4 py-4">
-          {columns.map((column) => {
-            // Show all columns, including ID, createdAt, and updatedAt
-            // Users should be able to specify values for all fields
-
-            const isDate = isDateColumn(column.data_type);
-
-            return (
-              <div
-                key={column.column_name}
-                className="grid grid-cols-4 items-center gap-4"
-              >
-                <label htmlFor={column.column_name} className="text-right">
-                  {column.column_name}
-                </label>
-                {isDate ? (
-                  <div className="col-span-3">
-                    <DatePicker
-                      date={
-                        formData[column.column_name]
-                          ? new Date(formData[column.column_name] as string)
-                          : undefined
-                      }
-                      setDate={(date) => {
-                        // Use a more direct approach to update the form data
-                        setFormData({
-                          ...formData,
-                          [column.column_name]: date
-                            ? date.toISOString()
-                            : null,
-                        });
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <input
-                    id={column.column_name}
-                    className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={
-                      formData[column.column_name] !== undefined
-                        ? String(formData[column.column_name])
-                        : ""
-                    }
-                    onChange={(e) =>
-                      handleInputChange(column.column_name, e.target.value)
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isSubmitting) {
-                        e.preventDefault();
-                        handleSubmit();
-                      }
-                    }}
-                    placeholder={`Enter ${column.column_name}`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Adding..." : "Add Record"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

@@ -74,6 +74,31 @@ const customGridStyles = `
     overflow: visible !important;
     z-index: 9999 !important;
   }
+  /* Style for new row */
+  .rdg-row-new-row,
+  .rdg .rdg-row.new-row,
+  .rdg .new-row {
+    background-color: rgb(239 246 255) !important;
+    outline: 2px solid rgb(59 130 246) !important;
+    outline-offset: -2px !important;
+    position: relative !important;
+    z-index: 10 !important;
+  }
+  .rdg-row-new-row .rdg-cell,
+  .rdg .rdg-row.new-row .rdg-cell,
+  .rdg .new-row .rdg-cell {
+    background-color: rgb(239 246 255) !important;
+  }
+  .dark .rdg-row-new-row,
+  .dark .rdg .rdg-row.new-row,
+  .dark .rdg .new-row {
+    background-color: rgb(30 58 138 / 0.3) !important;
+  }
+  .dark .rdg-row-new-row .rdg-cell,
+  .dark .rdg .rdg-row.new-row .rdg-cell,
+  .dark .rdg .new-row .rdg-cell {
+    background-color: rgb(30 58 138 / 0.3) !important;
+  }
 `;
 
 // Custom sortable header renderer
@@ -141,6 +166,7 @@ interface TableDataGridProps {
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
   onColumnSort: (columnKey: string) => void;
+  isAddingNewRow?: boolean;
 }
 
 export function TableDataGrid({
@@ -167,6 +193,7 @@ export function TableDataGrid({
   sortColumn,
   sortDirection,
   onColumnSort,
+  isAddingNewRow,
 }: TableDataGridProps) {
   const { theme } = useTheme();
   const router = useRouter();
@@ -265,77 +292,78 @@ export function TableDataGrid({
   );
 
   // Enhance columns to add cellClass/headerCellClass for outline control and custom FK formatter
-  const enhancedColumns = React.useMemo(
-    () =>
-      columns.map(
-        (
-          col: Column<Record<string, unknown>> & {
-            foreign_table_name?: string;
-            foreign_column_name?: string;
-          },
-        ) => {
-          // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
-          const isCheckbox =
-            col.key === "select-row" ||
-            col.key === "rdg-select-row" ||
-            col.key === "rdg-select-column";
+  const enhancedColumns = React.useMemo(() => {
+    return columns.map(
+      (
+        col: Column<Record<string, unknown>> & {
+          foreign_table_name?: string;
+          foreign_column_name?: string;
+        },
+      ) => {
+        // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
+        const isCheckbox =
+          col.key === "select-row" ||
+          col.key === "rdg-select-row" ||
+          col.key === "rdg-select-column";
 
-          // Add custom header renderer for sortable columns (skip checkbox columns)
-          // React-data-grid v7 expects renderHeaderCell, not headerRenderer
-          const renderHeaderCell = isCheckbox
-            ? undefined
-            : function HeaderRenderer() {
-                return (
-                  <SortableHeader
-                    column={{ key: col.key, name: col.name || col.key }}
-                    sortColumn={sortColumn}
-                    sortDirection={sortDirection}
-                    onSort={onColumnSort}
-                  />
-                );
-              };
-
-          // If this column is a foreign key, add a custom formatter
-          if (col.foreign_table_name && col.foreign_column_name) {
-            return {
-              ...col,
-              cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
-              headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
-              renderHeaderCell,
-              formatter: ({ row }: { row: Record<string, unknown> }) => {
-                const value = row[col.key];
-                if (value === undefined || value === null || value === "") {
-                  return <span className="text-gray-400">NULL</span>;
-                }
-                return (
-                  <span className="inline-flex items-center gap-1">
-                    {String(value)}
-                    <ArrowUpRight
-                      className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
-                      size={14}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(
-                          `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`,
-                        );
-                      }}
-                      aria-label={`Go to ${col.foreign_table_name}`}
-                    />
-                  </span>
-                );
-              },
+        // Add custom header renderer for sortable columns (skip checkbox columns)
+        // React-data-grid v7 expects renderHeaderCell, not headerRenderer
+        const renderHeaderCell = isCheckbox
+          ? undefined
+          : function HeaderRenderer() {
+              return (
+                <SortableHeader
+                  column={{ key: col.key, name: col.name || col.key }}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={onColumnSort}
+                />
+              );
             };
-          }
+
+        // If this column is a foreign key, add a custom formatter
+        if (col.foreign_table_name && col.foreign_column_name) {
           return {
             ...col,
             cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
             headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
             renderHeaderCell,
+            formatter: ({ row }: { row: Record<string, unknown> }) => {
+              const value = row[col.key];
+              if (value === undefined || value === null || value === "") {
+                return <span className="text-gray-400">NULL</span>;
+              }
+              return (
+                <span className="inline-flex items-center gap-1">
+                  {String(value)}
+                  <ArrowUpRight
+                    className="inline ml-1 cursor-pointer text-blue-500 hover:text-blue-700"
+                    size={14}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(
+                        `/tables/${col.foreign_table_name}?filters=${col.foreign_column_name}:equals:${encodeURIComponent(String(value))}`,
+                      );
+                    }}
+                    aria-label={`Go to ${col.foreign_table_name}`}
+                  />
+                </span>
+              );
+            },
           };
-        },
-      ),
-    [columns, sortColumn, sortDirection, onColumnSort, router],
-  );
+        }
+        return {
+          ...col,
+          cellClass: clsx(col.cellClass, isCheckbox && "rdg-checkbox-cell"),
+          headerCellClass: clsx(col.headerCellClass, "rdg-header-cell"),
+          renderHeaderCell,
+          // Preserve both formatter and renderCell
+          formatter: col.formatter,
+          renderCell: col.renderCell,
+        };
+      },
+    );
+  }, [columns, sortColumn, sortDirection, onColumnSort, router]);
 
   return (
     <>
@@ -359,9 +387,9 @@ export function TableDataGrid({
           >
             <ListFilter className="h-4 w-4 mr-2" /> Filters
           </Button>
-          <Button onClick={onAddRecord} size="sm">
+          <Button onClick={onAddRecord} size="sm" disabled={isAddingNewRow}>
             <Plus className="h-4 w-4" />
-            Add Record
+            {isAddingNewRow ? "Adding Record..." : "Add Record"}
           </Button>
           {selectedRows.size > 0 && (
             <Button
@@ -642,10 +670,30 @@ export function TableDataGrid({
             visibleColumns.includes(col.key),
           )}
           rows={filteredData}
-          rowKeyGetter={(row: Record<string, unknown>) => String(row.id)}
+          rowKeyGetter={(row: Record<string, unknown>) => {
+            const id = row.id || row.ID || row.uuid || row.UUID;
+            return String(id);
+          }}
           selectedRows={selectedRows}
           onSelectedRowsChange={onSelectedRowsChange}
-          onRowsChange={onRowsChange}
+          className={clsx(
+            theme === "light" && "rdg-light",
+            "rounded-lg mt-4 w-full",
+          )}
+          style={{ width: "100%" }}
+          onCellContextMenu={handleCellContextMenu}
+          rowClass={(row, index) => {
+            const id = String(row.id || row.ID || row.uuid || row.UUID);
+            const isNewRow = id.startsWith("new-");
+            console.log("Row class check:", id, isNewRow);
+            return clsx(isNewRow && "new-row rdg-row-new-row");
+          }}
+          onRowsChange={(rows, data) => {
+            // Apply inline styles to new rows after they're rendered
+            // Don't apply styles here - let the table page handle it
+            // This was causing duplicate styling
+            onRowsChange(rows, data);
+          }}
           renderers={{
             renderCheckbox: ({ onChange, ...props }: RenderCheckboxProps) => (
               <Checkbox
@@ -654,12 +702,6 @@ export function TableDataGrid({
               />
             ),
           }}
-          className={clsx(
-            theme === "light" && "rdg-light",
-            "rounded-lg mt-4 w-full",
-          )}
-          style={{ width: "100%" }}
-          onCellContextMenu={handleCellContextMenu}
         />
         {contextMenuValue !== null && contextMenuPosition && (
           <div
