@@ -1,11 +1,13 @@
 "use server";
 
 import {
+  checkDatabaseHealth,
   createSchema,
   updateTableCell as dbUpdateTableCell,
   deleteSchema,
   deleteTable,
   deleteTableRows,
+  getDatabaseStats,
   getSchemas,
   getTableColumns,
   getTableData,
@@ -259,6 +261,45 @@ export async function renameTableAction(
       success: false,
       message: `Failed to rename table ${oldTableName}`,
       error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to check database connection health
+ */
+export async function checkDatabaseConnectionHealth() {
+  try {
+    const result = await checkDatabaseHealth();
+    return result;
+  } catch (error) {
+    console.error("Error checking database health:", error);
+    return {
+      connected: false,
+      serverTime: null,
+      serverVersion: null,
+      message: `Failed to check database health: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to fetch database statistics
+ */
+export async function fetchDatabaseStats() {
+  try {
+    const result = await getDatabaseStats();
+    return result;
+  } catch (error) {
+    console.error("Error fetching database stats:", error);
+    return {
+      success: false,
+      databaseSize: "Unknown",
+      tableCount: 0,
+      schemaCount: 0,
+      databaseName: "Unknown",
+      currentUser: "Unknown",
+      error: `Failed to fetch database stats: ${error}`,
     };
   }
 }
