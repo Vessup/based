@@ -11,7 +11,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   addTableRow,
   deleteRows,
@@ -19,7 +25,12 @@ import {
   updateTableCell,
 } from "@/lib/actions";
 import { format, isValid, parseISO } from "date-fns";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -161,15 +172,32 @@ function DateEditor({
   onRowChange,
   onClose,
 }: RenderEditCellProps<Record<string, unknown>>) {
-  const [value, setValue] = useState(
-    row[column.key] ? new Date(row[column.key] as string) : undefined,
-  );
+  const [value, setValue] = useState(() => {
+    if (!row[column.key]) return undefined;
+    const dateStr = String(row[column.key]);
+
+    // If it's a date-only format (YYYY-MM-DD), parse as local date
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    // For timestamps, parse normally
+    return new Date(dateStr);
+  });
 
   const handleSave = useCallback(() => {
-    onRowChange(
-      { ...row, [column.key]: value ? value.toISOString() : null },
-      true,
-    );
+    if (value) {
+      // Format as YYYY-MM-DD (treating the selected date as UTC)
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      const formattedDate = `${year}-${month}-${day}`;
+
+      onRowChange({ ...row, [column.key]: formattedDate }, true);
+    } else {
+      onRowChange({ ...row, [column.key]: null }, true);
+    }
   }, [value, row, column.key, onRowChange]);
 
   const handleCancel = useCallback(() => {
@@ -258,9 +286,19 @@ function DateFormatter({ value }: { value: unknown }) {
 
   try {
     if (typeof value === "string") {
+      // If it's a date-only format (YYYY-MM-DD), display it as-is
+      if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return value;
+      }
+
+      // For timestamps, parse and format in UTC
       const date = parseISO(value);
       if (isValid(date)) {
-        return format(date, "PPP");
+        // Format as UTC date
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
       }
     }
   } catch (e) {
@@ -290,23 +328,6 @@ function NewRowFormatter({
   onCancel,
   isFirstColumn,
 }: NewRowFormatterProps) {
-  console.log(
-    "NewRowFormatter rendered for column:",
-    column.key,
-    "isFirstColumn:",
-    isFirstColumn,
-  );
-
-  // Debug: Check if this component is actually being rendered
-  useEffect(() => {
-    console.log(
-      `NewRowFormatter mounted for ${column.key}, isFirstColumn: ${isFirstColumn}`,
-    );
-    return () => {
-      console.log(`NewRowFormatter unmounted for ${column.key}`);
-    };
-  }, [column.key, isFirstColumn]);
-
   // Use local state to avoid re-rendering issues
   const [localValue, setLocalValue] = useState(row[column.key] ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -334,17 +355,9 @@ function NewRowFormatter({
   // Focus the input when it's first rendered (only for the first column)
   useEffect(() => {
     if (isFirstColumn) {
-      console.log(
-        `Focus attempt for column ${column.key}, isFirstColumn: ${isFirstColumn}`,
-      );
-
       // Use MutationObserver to detect when the input is actually added to the DOM
       const observer = new MutationObserver(() => {
         if (inputRef.current) {
-          console.log(
-            "MutationObserver: Focusing input for column:",
-            column.key,
-          );
           inputRef.current.focus();
           inputRef.current.select();
           observer.disconnect();
@@ -360,7 +373,6 @@ function NewRowFormatter({
       // Also try multiple methods to ensure focus
       const focusInput = () => {
         if (inputRef.current) {
-          console.log("Direct focus attempt for column:", column.key);
           inputRef.current.focus();
           inputRef.current.select();
         }
@@ -385,15 +397,109 @@ function NewRowFormatter({
         observer.disconnect();
       };
     }
-  }, [isFirstColumn, column.key]);
+  }, [isFirstColumn]);
 
   if (isDateColumn) {
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const inputValue = e.target.value;
+      setLocalValue(inputValue);
+
+      // Update the parent component with the raw value
+      // Let the database handle parsing
+      handleChange(inputValue || null);
+    };
+
+    const handleDatePickerChange = (date: Date | undefined) => {
+      if (date) {
+        // Create a UTC date from the selected date (treating the selected date as UTC)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const formattedDate = `${year}-${month}-${day}`;
+
+        setLocalValue(formattedDate);
+        handleChange(formattedDate);
+      } else {
+        setLocalValue("");
+        handleChange(null);
+      }
+      setIsPopoverOpen(false);
+    };
+
+    // Parse the date for the calendar component
+    const getDateForCalendar = () => {
+      if (!localValue || localValue === "") return undefined;
+      try {
+        // Parse YYYY-MM-DD format as UTC
+        const dateStr = String(localValue);
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          // Create date in local timezone to display correctly in calendar
+          return new Date(year, month - 1, day);
+        }
+        return undefined;
+      } catch {
+        return undefined;
+      }
+    };
+
     return (
-      <div className="h-full flex items-center px-2">
-        <DatePicker
-          date={localValue ? new Date(localValue as string) : undefined}
-          setDate={(date) => handleChange(date ? date.toISOString() : null)}
+      <div className="h-full flex items-center px-2 relative">
+        <input
+          ref={inputRef}
+          type="text"
+          className="w-full h-full pr-8 px-2 py-1 border-0 outline-none bg-transparent"
+          style={{
+            minHeight: "35px",
+            backgroundColor: "white",
+            color: "black",
+          }}
+          value={
+            localValue === null || localValue === undefined
+              ? ""
+              : String(localValue)
+          }
+          onChange={handleDateInputChange}
+          placeholder="YYYY-MM-DD"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel?.();
+            } else if (e.key === "Enter" && e.ctrlKey) {
+              e.preventDefault();
+              onSave?.();
+            } else if (e.key === "Tab") {
+              e.stopPropagation();
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
         />
+        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 h-full px-2"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              type="button"
+            >
+              <CalendarIcon className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={getDateForCalendar()}
+              onSelect={handleDatePickerChange}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
       </div>
     );
   }
@@ -470,7 +576,6 @@ function doneNProgress() {
 // Helper to show error toast with copy button
 function showError(message: string, error?: unknown) {
   const errorMessage = error ? `${message}: ${error}` : message;
-  console.error("Error:", errorMessage, error);
 
   toast.error(errorMessage, {
     duration: 10000, // Show for 10 seconds
@@ -482,8 +587,8 @@ function showError(message: string, error?: unknown) {
           .then(() => {
             toast.success("Error copied to clipboard");
           })
-          .catch((err) => {
-            console.error("Failed to copy error:", err);
+          .catch(() => {
+            // Failed to copy, but don't log
           });
       },
     },
@@ -748,8 +853,6 @@ export default function TablePage() {
           setColumns(result.columns);
           setPagination(result.data.pagination);
           setError(null);
-
-          console.log("Loaded columns:", result.columns);
         }
       } catch (err) {
         const errorMessage = `Failed to load table data: ${err}`;
@@ -799,8 +902,6 @@ export default function TablePage() {
 
     // Add the new row to the beginning of the data
     const newData = [newRow, ...data];
-    console.log("Adding new row to data:", newRow);
-    console.log("New data array:", newData);
     setData(newData);
 
     // Focus will be handled by the NewRowFormatter component
@@ -810,7 +911,6 @@ export default function TablePage() {
       const inputs = document.querySelectorAll(
         ".rdg-row input, .rdg input[type='text'], .rdg input[type='number']",
       );
-      console.log("Found inputs:", inputs.length);
 
       // Find the input in the new row (should be in the first row)
       for (const input of inputs) {
@@ -818,7 +918,6 @@ export default function TablePage() {
         if (row && input instanceof HTMLInputElement) {
           // Check if this is in the new row by checking if it has our placeholder
           if (input.placeholder?.startsWith("Enter ")) {
-            console.log("Found new row input, focusing:", input);
             input.focus();
             input.select();
             return true;
@@ -845,7 +944,6 @@ export default function TablePage() {
     // Also apply styles to the new row
     setTimeout(() => {
       const rows = document.querySelectorAll(".rdg-row");
-      console.log("Checking rows for styling:", rows.length);
 
       // Find the row that contains our new row inputs
       for (const row of rows) {
@@ -853,7 +951,6 @@ export default function TablePage() {
           'input[placeholder^="Enter "]',
         );
         if (hasNewRowInput) {
-          console.log("Found new row, applying styles");
           const rowElement = row as HTMLElement;
           rowElement.style.backgroundColor =
             theme === "light" ? "rgb(239 246 255)" : "rgb(30 58 138 / 0.3)";
@@ -920,9 +1017,7 @@ export default function TablePage() {
         params.set("page", "1"); // Reset to first page when sorting
         router.push(`?${params.toString()}`);
       } catch (error) {
-        console.error("Navigation error:", error);
-        // Optionally show user-friendly error message
-        // toast.error('Failed to sort column. Please try again.');
+        showError("Failed to sort column", error);
       }
     },
     [sortColumn, sortDirection, searchParams, router],
@@ -972,10 +1067,7 @@ export default function TablePage() {
       setIsAddingRecord(true);
       startNProgress();
 
-      console.log("newRowData before processing:", newRowData);
-      console.log("Attempting to insert data:", dataToInsert);
       const result = await addTableRow(tableName, dataToInsert);
-      console.log("Insert result:", result);
 
       if (result.success) {
         toast.success("Record added successfully");
@@ -1065,18 +1157,9 @@ export default function TablePage() {
             props.row.id || props.row.ID || props.row.uuid || props.row.UUID,
           );
 
-          // Debug all rows
-          console.log(
-            `renderCell called for column ${column.column_name}, rowId: ${rowId}, row:`,
-            props.row,
-          );
-
           // Use custom formatter for new row
           if (rowId.startsWith("new-")) {
             const isFirst = columns[0]?.column_name === column.column_name;
-            console.log(
-              `✅ RENDERING NEW ROW CELL! column: ${column.column_name}, isFirst: ${isFirst}, rowId: ${rowId}`,
-            );
             return (
               <div
                 className="w-full h-full"

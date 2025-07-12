@@ -685,7 +685,6 @@ export function TableDataGrid({
           rowClass={(row, index) => {
             const id = String(row.id || row.ID || row.uuid || row.UUID);
             const isNewRow = id.startsWith("new-");
-            console.log("Row class check:", id, isNewRow);
             return clsx(isNewRow && "new-row rdg-row-new-row");
           }}
           onRowsChange={(rows, data) => {
