@@ -13,6 +13,9 @@
     "initializeDb": "bun scripts/initializeDb.ts",
     "seedDb": "bun scripts/seedDb.ts",
     "setupDb": "bun run initializeDb && bun run seedDb",
+    "initializeTestDb": "NODE_ENV=test POSTGRES_PORT=5433 POSTGRES_DB=based_test bun scripts/initializeDb.ts",
+    "seedTestDb": "NODE_ENV=test POSTGRES_PORT=5433 POSTGRES_DB=based_test bun scripts/seedDb.ts",
+    "setupTestDb": "bun run initializeTestDb && bun run seedTestDb",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug"
