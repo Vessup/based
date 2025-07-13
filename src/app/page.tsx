@@ -8,7 +8,7 @@ import {
   checkDatabaseConnectionHealth,
   fetchDatabaseStats,
 } from "@/lib/actions";
-import { config } from "@/lib/db";
+import { config } from "@/lib/config";
 import { Database, RefreshCw, Settings } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
