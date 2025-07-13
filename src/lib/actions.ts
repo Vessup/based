@@ -1,11 +1,13 @@
 "use server";
 
 import {
+  checkDatabaseHealth,
   createSchema,
   updateTableCell as dbUpdateTableCell,
   deleteSchema,
   deleteTable,
   deleteTableRows,
+  getDatabaseStats,
   getSchemas,
   getTableColumns,
   getTableData,
@@ -13,6 +15,7 @@ import {
   insertTableRow,
   renameSchema,
   renameTable,
+  testDatabaseConnection,
 } from "./db";
 
 /**
@@ -259,6 +262,102 @@ export async function renameTableAction(
       success: false,
       message: `Failed to rename table ${oldTableName}`,
       error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to check database connection health
+ */
+export async function checkDatabaseConnectionHealth() {
+  try {
+    const result = await checkDatabaseHealth();
+    return result;
+  } catch (error) {
+    console.error("Error checking database health:", error);
+    return {
+      connected: false,
+      serverTime: null,
+      serverVersion: null,
+      message: `Failed to check database health: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to fetch database statistics
+ */
+export async function fetchDatabaseStats() {
+  try {
+    const result = await getDatabaseStats();
+    return result;
+  } catch (error) {
+    console.error("Error fetching database stats:", error);
+    return {
+      success: false,
+      cacheHitRatio: null,
+      activeConnections: null,
+      databaseSize: "Unknown",
+      tableActivity: [],
+      tableSizes: [],
+      missingIndexes: [],
+      unusedIndexes: [],
+      slowQueries: [],
+      error: `Failed to fetch database stats: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to test database connection with custom configuration
+ */
+export async function testCustomDatabaseConnection(config: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  try {
+    const result = await testDatabaseConnection(config);
+    return result;
+  } catch (error) {
+    console.error("Error testing custom database connection:", error);
+    return {
+      connected: false,
+      serverTime: null,
+      serverVersion: null,
+      message: `Failed to test database connection: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to fetch database statistics with custom configuration
+ */
+export async function fetchDatabaseStatsWithConfig(config: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  try {
+    const result = await getDatabaseStats(config);
+    return result;
+  } catch (error) {
+    console.error("Error fetching database stats with custom config:", error);
+    return {
+      success: false,
+      cacheHitRatio: null,
+      activeConnections: null,
+      databaseSize: "Unknown",
+      tableActivity: [],
+      tableSizes: [],
+      missingIndexes: [],
+      unusedIndexes: [],
+      slowQueries: [],
+      error: `Failed to fetch database stats: ${error}`,
     };
   }
 }
