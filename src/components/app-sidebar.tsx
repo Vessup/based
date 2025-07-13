@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   ChevronDown,
+  Code,
   Database,
   Edit2,
   MoreHorizontal,
@@ -490,6 +491,29 @@ export function AppSidebar() {
                       </div>
                     </PopoverContent>
                   </Popover>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>SQL Queries</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={
+                      params.table === undefined &&
+                      typeof window !== "undefined" &&
+                      window.location.pathname === "/queries"
+                    }
+                  >
+                    <Link href="/queries">
+                      <Code className="h-4 w-4" />
+                      <span>Query Workspace</span>
+                    </Link>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

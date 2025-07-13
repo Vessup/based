@@ -811,3 +811,88 @@ export async function updateTableCell(
     };
   }
 }
+
+/**
+ * Executes a custom SQL query safely
+ * @param query The SQL query to execute
+ * @returns Object containing query results or error
+ */
+export async function executeCustomQuery(query: string) {
+  try {
+    if (!query.trim()) {
+      return {
+        success: false,
+        message: "Query cannot be empty",
+        results: [],
+        columns: [],
+      };
+    }
+
+    // Prevent dangerous operations - basic protection
+    const dangerousKeywords = [
+      "DROP",
+      "DELETE",
+      "UPDATE",
+      "INSERT",
+      "CREATE",
+      "ALTER",
+      "TRUNCATE",
+      "GRANT",
+      "REVOKE",
+    ];
+
+    const upperQuery = query.toUpperCase().trim();
+    const isDangerous = dangerousKeywords.some(
+      (keyword) =>
+        upperQuery.startsWith(`${keyword} `) ||
+        upperQuery.includes(` ${keyword} `) ||
+        upperQuery.endsWith(` ${keyword}`),
+    );
+
+    if (isDangerous) {
+      return {
+        success: false,
+        message: "Only SELECT queries are allowed for security reasons",
+        results: [],
+        columns: [],
+      };
+    }
+
+    // Execute the query using db.unsafe for custom SQL
+    const result = await db.unsafe(query);
+
+    // Extract column information from the first row if available
+    let columns: Array<{ key: string; name: string; type: string }> = [];
+    if (result.length > 0) {
+      const firstRow = result[0];
+      columns = Object.keys(firstRow).map((key) => ({
+        key,
+        name: key,
+        type:
+          typeof firstRow[key] === "number"
+            ? "number"
+            : typeof firstRow[key] === "boolean"
+              ? "boolean"
+              : firstRow[key] instanceof Date
+                ? "date"
+                : "string",
+      }));
+    }
+
+    return {
+      success: true,
+      message: `Query executed successfully. ${result.length} rows returned.`,
+      results: result,
+      columns,
+      rowCount: result.length,
+    };
+  } catch (error) {
+    console.error("Error executing custom query:", error);
+    return {
+      success: false,
+      message: `Query execution failed: ${error}`,
+      results: [],
+      columns: [],
+    };
+  }
+}
