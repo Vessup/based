@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { DatePicker } from "@/components/ui/date-picker";
 import {
   Popover,
   PopoverContent,
@@ -172,111 +172,47 @@ function DateEditor({
   onRowChange,
   onClose,
 }: RenderEditCellProps<Record<string, unknown>>) {
-  const [value, setValue] = useState(() => {
-    if (!row[column.key]) return undefined;
+  // Convert row value to string format for DateInput
+  const initialValue = (() => {
+    if (!row[column.key]) return null;
     const dateStr = String(row[column.key]);
 
-    // If it's a date-only format (YYYY-MM-DD), parse as local date
+    // If it's already in YYYY-MM-DD format, use as-is
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = dateStr.split("-").map(Number);
-      return new Date(year, month - 1, day);
+      return dateStr;
     }
 
-    // For timestamps, parse normally
-    return new Date(dateStr);
-  });
+    // For timestamps, parse and convert to YYYY-MM-DD
+    try {
+      const date = new Date(dateStr);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [value, setValue] = useState<string | null>(initialValue);
 
   const handleSave = useCallback(() => {
-    if (value) {
-      // Format as YYYY-MM-DD (treating the selected date as UTC)
-      const year = value.getFullYear();
-      const month = String(value.getMonth() + 1).padStart(2, "0");
-      const day = String(value.getDate()).padStart(2, "0");
-      const formattedDate = `${year}-${month}-${day}`;
-
-      onRowChange({ ...row, [column.key]: formattedDate }, true);
-    } else {
-      onRowChange({ ...row, [column.key]: null }, true);
-    }
+    onRowChange({ ...row, [column.key]: value }, true);
   }, [value, row, column.key, onRowChange]);
 
   const handleCancel = useCallback(() => {
     onClose(false);
   }, [onClose]);
 
-  useEffect(() => {
-    // Auto-focus when editor opens
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleCancel();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleCancel]);
-
   return (
-    <div className="relative w-full h-full">
-      <div className="w-full h-full px-2 flex items-center">
-        <DatePicker
-          date={value}
-          setDate={(date) => {
-            setValue(date);
-          }}
-        />
-      </div>
-      <div className="absolute -right-14 top-1/2 -translate-y-1/2 flex gap-1 bg-background border rounded shadow-sm z-50">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="p-1 hover:bg-green-100 rounded-l text-green-600 border-r"
-          title="Save"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            role="img"
-            aria-label="Save"
-          >
-            <path
-              d="M13.5 4.5L6 12L2.5 8.5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="p-1 hover:bg-red-100 rounded-r text-red-600"
-          title="Cancel (Esc)"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            role="img"
-            aria-label="Cancel"
-          >
-            <path
-              d="M12 4L4 12M4 4L12 12"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      </div>
-    </div>
+    <DateInput
+      value={value}
+      onChange={setValue}
+      onSave={handleSave}
+      onCancel={handleCancel}
+      showSaveCancel={true}
+      autoFocus={true}
+    />
   );
 }
 
@@ -400,107 +336,19 @@ function NewRowFormatter({
   }, [isFirstColumn]);
 
   if (isDateColumn) {
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
-    const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const inputValue = e.target.value;
-      setLocalValue(inputValue);
-
-      // Update the parent component with the raw value
-      // Let the database handle parsing
-      handleChange(inputValue || null);
-    };
-
-    const handleDatePickerChange = (date: Date | undefined) => {
-      if (date) {
-        // Create a UTC date from the selected date (treating the selected date as UTC)
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const formattedDate = `${year}-${month}-${day}`;
-
-        setLocalValue(formattedDate);
-        handleChange(formattedDate);
-      } else {
-        setLocalValue("");
-        handleChange(null);
-      }
-      setIsPopoverOpen(false);
-    };
-
-    // Parse the date for the calendar component
-    const getDateForCalendar = () => {
-      if (!localValue || localValue === "") return undefined;
-      try {
-        // Parse YYYY-MM-DD format as UTC
-        const dateStr = String(localValue);
-        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          const [year, month, day] = dateStr.split("-").map(Number);
-          // Create date in local timezone to display correctly in calendar
-          return new Date(year, month - 1, day);
-        }
-        return undefined;
-      } catch {
-        return undefined;
-      }
-    };
-
     return (
-      <div className="h-full flex items-center px-2 relative">
-        <input
-          ref={inputRef}
-          type="text"
-          className="w-full h-full pr-8 px-2 py-1 border-0 outline-none bg-transparent"
-          style={{
-            minHeight: "35px",
-            backgroundColor: "white",
-            color: "black",
-          }}
-          value={
-            localValue === null || localValue === undefined
-              ? ""
-              : String(localValue)
-          }
-          onChange={handleDateInputChange}
-          placeholder="YYYY-MM-DD"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              onCancel?.();
-            } else if (e.key === "Enter" && e.ctrlKey) {
-              e.preventDefault();
-              onSave?.();
-            } else if (e.key === "Tab") {
-              e.stopPropagation();
-            }
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
-        />
-        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-0 h-full px-2"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-              type="button"
-            >
-              <CalendarIcon className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={getDateForCalendar()}
-              onSelect={handleDatePickerChange}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+      <DateInput
+        value={localValue}
+        onChange={(value) => {
+          setLocalValue(value || "");
+          handleChange(value);
+        }}
+        onSave={onSave}
+        onCancel={onCancel}
+        autoFocus={isFirstColumn}
+        showTextInput={true}
+        showSaveCancel={false}
+      />
     );
   }
 

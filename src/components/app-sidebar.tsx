@@ -51,11 +51,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -126,7 +121,6 @@ export function AppSidebar() {
   const [isRenameSchemaDialogOpen, setIsRenameSchemaDialogOpen] =
     useState(false);
   const [newSchemaNameForRename, setNewSchemaNameForRename] = useState("");
-  const [schemaPopoverOpen, setSchemaPopoverOpen] = useState(false);
   const [schemaOperationStatus, setSchemaOperationStatus] = useState<{
     loading: boolean;
     error: string | null;
@@ -519,7 +513,7 @@ export function AppSidebar() {
           </SidebarGroup>
 
           <SidebarGroup>
-            <SidebarGroupLabel>Schema</SidebarGroupLabel>
+            <SidebarGroupLabel>Schemas</SidebarGroupLabel>
             <SidebarGroupAction
               className="mr-0.5"
               onClick={() => {
@@ -532,85 +526,57 @@ export function AppSidebar() {
             </SidebarGroupAction>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <Popover
-                    open={schemaPopoverOpen}
-                    onOpenChange={setSchemaPopoverOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <SidebarMenuButton>
-                        {selectedSchema || "Select schema"}
-                        <ChevronDown className="ml-auto" />
-                      </SidebarMenuButton>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-[var(--radix-popover-trigger-width)] p-0"
-                      align="start"
-                      sideOffset={4}
+                {schemas.map((schema) => (
+                  <SidebarMenuItem key={schema}>
+                    <SidebarMenuButton
+                      isActive={schema === selectedSchema}
+                      onClick={() => handleSchemaChange(schema)}
                     >
-                      <div className="max-h-[300px] overflow-y-auto">
-                        {schemas.map((schema) => (
-                          <div
-                            key={schema}
-                            className={`group flex items-center justify-between px-3 py-2 hover:bg-accent ${
-                              schema === selectedSchema ? "bg-accent" : ""
-                            }`}
+                      <Database className="h-4 w-4" />
+                      <span>{schema}</span>
+                    </SidebarMenuButton>
+                    {schema !== "public" && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction className="mr-0.5">
+                            <MoreHorizontal />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSchemaToRename(schema);
+                              setNewSchemaNameForRename(schema);
+                              setSchemaOperationStatus({
+                                loading: false,
+                                error: null,
+                              });
+                              setTimeout(() => {
+                                setIsRenameSchemaDialogOpen(true);
+                              }, 100);
+                            }}
                           >
-                            <button
-                              type="button"
-                              className="flex-1 text-left cursor-pointer"
-                              onClick={() => {
-                                handleSchemaChange(schema);
-                                setSchemaPopoverOpen(false);
-                              }}
-                            >
-                              {schema}
-                            </button>
-                            {schema !== "public" && (
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSchemaPopoverOpen(false);
-                                    setSchemaToRename(schema);
-                                    setNewSchemaNameForRename(schema);
-                                    setSchemaOperationStatus({
-                                      loading: false,
-                                      error: null,
-                                    });
-                                    setIsRenameSchemaDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSchemaPopoverOpen(false);
-                                    setSchemaToDelete(schema);
-                                    setSchemaOperationStatus({
-                                      loading: false,
-                                      error: null,
-                                    });
-                                    setIsDeleteSchemaDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </SidebarMenuItem>
+                            <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSchemaToDelete(schema);
+                              setSchemaOperationStatus({
+                                loading: false,
+                                error: null,
+                              });
+                              setTimeout(() => {
+                                setIsDeleteSchemaDialogOpen(true);
+                              }, 100);
+                            }}
+                          >
+                            <span>Drop schema</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
