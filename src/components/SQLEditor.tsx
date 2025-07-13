@@ -89,21 +89,10 @@ export function SQLEditor({
               </>
             )}
           </Button>
-          {onSave && (
-            <Button
-              onClick={handleSave}
-              disabled={!isDirty}
-              variant="outline"
-              size="sm"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-          )}
         </div>
 
         <div className="text-sm text-muted-foreground">
-          Ctrl+Enter to execute • Ctrl+S to save
+          Ctrl+Enter to execute
         </div>
       </div>
 

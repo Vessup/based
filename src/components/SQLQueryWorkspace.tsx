@@ -2,10 +2,10 @@
 
 import { useCustomQueries } from "@/hooks/useCustomQueries";
 import { executeCustomSQLQuery } from "@/lib/actions";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { QueryResults } from "./QueryResults";
-import { QueryTabs } from "./QueryTabs";
 import { SQLEditor } from "./SQLEditor";
 
 interface SQLQueryWorkspaceProps {
@@ -26,17 +26,11 @@ export function SQLQueryWorkspace({
   database,
   schema,
 }: SQLQueryWorkspaceProps) {
-  const {
-    queries,
-    isLoaded,
-    addQuery,
-    updateQuery,
-    deleteQuery,
-    getQuery,
-    duplicateQuery,
-  } = useCustomQueries({ database, schema });
+  const searchParams = useSearchParams();
+  const queryId = searchParams.get("queryId");
 
-  const [activeQueryId, setActiveQueryId] = useState<string | null>(null);
+  const { getQuery, updateQuery } = useCustomQueries({ database, schema });
+
   const [currentQuery, setCurrentQuery] = useState("");
   const [execution, setExecution] = useState<QueryExecution>({
     isLoading: false,
@@ -49,61 +43,29 @@ export function SQLQueryWorkspace({
 
   // Get the active query object
   const activeQuery = useMemo(() => {
-    return activeQueryId ? getQuery(activeQueryId) : null;
-  }, [activeQueryId, getQuery]);
+    return queryId ? getQuery(queryId) : null;
+  }, [queryId, getQuery]);
 
   // Sync current query with active query
   useEffect(() => {
     if (activeQuery) {
       setCurrentQuery(activeQuery.query);
-    } else if (queries.length === 0) {
+    } else {
       setCurrentQuery("");
     }
-  }, [activeQuery, queries.length]);
+  }, [activeQuery]);
 
-  // Auto-select first query when loaded
-  useEffect(() => {
-    if (isLoaded && queries.length > 0 && !activeQueryId) {
-      setActiveQueryId(queries[0].id);
-    }
-  }, [isLoaded, queries, activeQueryId]);
-
-  // Create a new query
-  const handleCreateQuery = useCallback(
-    (name: string) => {
-      const newQueryId = addQuery(
-        name,
-        "-- Enter your SQL query here\nSELECT 1 as hello_world;",
-      );
-      setActiveQueryId(newQueryId);
-      toast.success(`Created query "${name}"`);
-    },
-    [addQuery],
-  );
-
-  // Switch to a different query
-  const handleSelectQuery = useCallback(
-    (queryId: string) => {
-      // Save current query before switching if there's an active query
-      if (activeQueryId && currentQuery !== activeQuery?.query) {
-        updateQuery(activeQueryId, { query: currentQuery });
+  // Update query content with auto-save
+  const handleQueryChange = useCallback(
+    (query: string) => {
+      setCurrentQuery(query);
+      // Auto-save to localStorage if there's an active query
+      if (queryId) {
+        updateQuery(queryId, { query });
       }
-      setActiveQueryId(queryId);
     },
-    [activeQueryId, currentQuery, activeQuery?.query, updateQuery],
+    [queryId, updateQuery],
   );
-
-  // Update query content
-  const handleQueryChange = useCallback((query: string) => {
-    setCurrentQuery(query);
-  }, []);
-
-  // Save current query
-  const handleSaveQuery = useCallback(() => {
-    if (!activeQueryId) return;
-    updateQuery(activeQueryId, { query: currentQuery });
-    toast.success("Query saved");
-  }, [activeQueryId, currentQuery, updateQuery]);
 
   // Execute current query
   const handleExecuteQuery = useCallback(async (query: string) => {
@@ -160,76 +122,36 @@ export function SQLQueryWorkspace({
     }
   }, []);
 
-  // Rename a query
-  const handleRenameQuery = useCallback(
-    (queryId: string, name: string) => {
-      updateQuery(queryId, { name });
-      toast.success(`Renamed query to "${name}"`);
-    },
-    [updateQuery],
-  );
-
-  // Duplicate a query
-  const handleDuplicateQuery = useCallback(
-    (queryId: string) => {
-      const newQueryId = duplicateQuery(queryId);
-      if (newQueryId) {
-        setActiveQueryId(newQueryId);
-        toast.success("Query duplicated");
-      }
-    },
-    [duplicateQuery],
-  );
-
-  // Delete a query
-  const handleDeleteQuery = useCallback(
-    (queryId: string) => {
-      deleteQuery(queryId);
-
-      // If we deleted the active query, switch to another one or clear
-      if (queryId === activeQueryId) {
-        const remainingQueries = queries.filter((q) => q.id !== queryId);
-        if (remainingQueries.length > 0) {
-          setActiveQueryId(remainingQueries[0].id);
-        } else {
-          setActiveQueryId(null);
-          setCurrentQuery("");
-        }
-      }
-
-      toast.success("Query deleted");
-    },
-    [deleteQuery, activeQueryId, queries],
-  );
-
-  // Create initial query if none exist
-  useEffect(() => {
-    if (isLoaded && queries.length === 0) {
-      handleCreateQuery("My First Query");
-    }
-  }, [isLoaded, queries.length, handleCreateQuery]);
-
-  if (!isLoaded) {
+  // Show message if no query is selected
+  if (!queryId) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading queries...</div>
+        <div className="text-center">
+          <div className="text-muted-foreground mb-2">No query selected</div>
+          <div className="text-sm text-muted-foreground">
+            Select a query from the sidebar or create a new one
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if query not found
+  if (!activeQuery) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-muted-foreground mb-2">Query not found</div>
+          <div className="text-sm text-muted-foreground">
+            The selected query may have been deleted
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Query tabs */}
-      <QueryTabs
-        queries={queries}
-        activeQueryId={activeQueryId}
-        onSelectQuery={handleSelectQuery}
-        onCreateQuery={handleCreateQuery}
-        onRenameQuery={handleRenameQuery}
-        onDuplicateQuery={handleDuplicateQuery}
-        onDeleteQuery={handleDeleteQuery}
-      />
-
       {/* Main content area with editor and results */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* SQL Editor - takes up half the available space */}
@@ -238,7 +160,6 @@ export function SQLQueryWorkspace({
             query={currentQuery}
             onQueryChange={handleQueryChange}
             onExecute={handleExecuteQuery}
-            onSave={activeQueryId ? handleSaveQuery : undefined}
             isExecuting={execution.isLoading}
           />
         </div>

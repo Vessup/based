@@ -43,6 +43,10 @@ export function QueryResults({
         if (value === null || value === undefined) {
           return <span className="text-gray-400">NULL</span>;
         }
+        // Handle Date objects specifically
+        if (value instanceof Date) {
+          return <span>{value.toISOString()}</span>;
+        }
         if (typeof value === "object") {
           return <span className="text-blue-600">{JSON.stringify(value)}</span>;
         }
@@ -178,26 +182,27 @@ export function QueryResults({
           columns={gridColumns}
           data={results}
           onColumnSort={() => {}} // Query results are read-only
-          sortColumn={null}
-          sortDirection={null}
+          sortColumn={undefined}
+          sortDirection={undefined}
           refreshing={false}
           onRefresh={() => onRefresh?.()}
           onShowFiltersChange={() => {}} // No filters for query results
           showFilters={false}
           selectedRows={new Set()}
-          onRowSelectionChange={() => {}} // No row selection for query results
+          onSelectedRowsChange={() => {}} // No row selection for query results
+          onRowsChange={() => {}} // No editing for query results
           isAddingNewRow={false}
           onAddRecord={() => {}} // No adding records for query results
           onDeleteSelected={() => {}} // No deleting for query results
           isDeleting={false}
-          pagination={{
-            total: results.length,
-            page: 1,
-            pageSize: results.length,
-            pageCount: 1,
-          }}
+          pagination={{ total: results.length }}
+          currentPage={1}
+          pageSize={results.length}
+          pageCount={1}
           onPageChange={() => {}} // All results shown
           onPageSizeChange={() => {}} // All results shown
+          filters={[]}
+          onFiltersChange={() => {}}
         />
       </div>
     </div>
