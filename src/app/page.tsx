@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
-  checkDatabaseConnectionHealth,
   fetchDatabaseStats,
+  fetchDatabaseStatsWithConfig,
+  testCustomDatabaseConnection,
 } from "@/lib/actions";
 import { config } from "@/lib/config";
-import { Database, RefreshCw, Settings } from "lucide-react";
+import { Database, Plug, Settings, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 interface DatabaseHealth {
@@ -21,11 +22,40 @@ interface DatabaseHealth {
 
 interface DatabaseStats {
   success: boolean;
+  cacheHitRatio: number | null;
+  activeConnections: number | null;
   databaseSize: string;
-  tableCount: number;
-  schemaCount: number;
-  databaseName: string;
-  currentUser: string;
+  tableActivity: Array<{
+    tablename: string;
+    seq_scan: number;
+    seq_tup_read: number;
+    idx_scan: number;
+    idx_tup_fetch: number;
+    n_tup_ins: number;
+    n_tup_upd: number;
+    n_tup_del: number;
+  }>;
+  tableSizes: Array<{
+    tablename: string;
+    size: string;
+  }>;
+  missingIndexes: Array<{
+    tablename: string;
+    seq_scan: number;
+    seq_tup_read: number;
+    avg_seq_read: number;
+  }>;
+  unusedIndexes: Array<{
+    tablename: string;
+    indexname: string;
+    idx_scan: number;
+  }>;
+  slowQueries: Array<{
+    query: string;
+    state: string;
+    query_start: string;
+    duration_seconds: number;
+  }>;
   error?: string;
 }
 
@@ -41,7 +71,7 @@ export default function Home() {
   const [health, setHealth] = useState<DatabaseHealth | null>(null);
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>({
     host: config.host,
     port: config.port,
@@ -50,37 +80,38 @@ export default function Home() {
     database: config.database,
   });
 
-  const checkConnection = useCallback(async () => {
+  const connectToDatabase = useCallback(async () => {
     try {
-      setRefreshing(true);
-      const healthResult = await checkDatabaseConnectionHealth();
+      setConnecting(true);
+      const healthResult = await testCustomDatabaseConnection(connectionConfig);
       setHealth(healthResult);
 
       if (healthResult.connected) {
-        const statsResult = await fetchDatabaseStats();
+        const statsResult =
+          await fetchDatabaseStatsWithConfig(connectionConfig);
         setStats(statsResult);
       } else {
         setStats(null);
       }
     } catch (error) {
-      console.error("Error checking connection:", error);
+      console.error("Error connecting to database:", error);
       setHealth({
         connected: false,
-        message: `Connection check failed: ${error}`,
+        message: `Connection failed: ${error}`,
       });
       setStats(null);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      setConnecting(false);
     }
-  }, []);
+  }, [connectionConfig]);
 
   useEffect(() => {
-    checkConnection();
-  }, [checkConnection]);
+    connectToDatabase();
+  }, [connectToDatabase]);
 
   const ConnectionIndicator = () => (
-    <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
+    <div className="w-full flex items-center gap-3 p-4 rounded-lg border bg-card">
       <div className="flex items-center gap-2">
         <div
           className={`w-3 h-3 rounded-full ${
@@ -91,20 +122,16 @@ export default function Home() {
           {health?.connected ? "Connected" : "Disconnected"}
         </span>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={checkConnection}
-        disabled={refreshing}
-      >
-        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-        Refresh
-      </Button>
+      {health?.serverVersion && (
+        <span className="text-sm text-muted-foreground">
+          {health.serverVersion.split(" ").slice(0, 2).join(" ")}
+        </span>
+      )}
     </div>
   );
 
   const ConnectionForm = () => (
-    <div className="space-y-6 p-6 rounded-lg border bg-card">
+    <div className="w-full space-y-6 p-6 rounded-lg border bg-card">
       <div className="flex items-center gap-2">
         <Settings className="h-5 w-5" />
         <h3 className="text-lg font-semibold">Database Connection</h3>
@@ -183,13 +210,15 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="text-sm text-muted-foreground">
-        <p>
-          <strong>Note:</strong> Connection settings are read from environment
-          variables and cannot be modified from this interface. To change
-          connection settings, update your environment variables and restart the
-          application.
-        </p>
+      <div className="flex gap-2">
+        <Button
+          onClick={connectToDatabase}
+          disabled={connecting}
+          className="flex items-center gap-2"
+        >
+          <Plug className={`h-4 w-4 ${connecting ? "animate-pulse" : ""}`} />
+          {connecting ? "Connecting..." : "Connect"}
+        </Button>
       </div>
 
       {health && !health.connected && (
@@ -206,52 +235,186 @@ export default function Home() {
     }
 
     return (
-      <div className="space-y-6 p-6 rounded-lg border bg-card">
+      <div className="w-full space-y-6 p-6 rounded-lg border bg-card">
         <div className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
-          <h3 className="text-lg font-semibold">Database Statistics</h3>
+          <TrendingUp className="h-5 w-5" />
+          <h3 className="text-lg font-semibold">
+            Database Performance & Statistics
+          </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Quick Health Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Database Name</p>
-            <p className="text-2xl font-semibold">{stats.databaseName}</p>
+            <p className="text-sm text-muted-foreground">Cache Hit Ratio</p>
+            <p
+              className={`text-2xl font-semibold ${
+                stats.cacheHitRatio && stats.cacheHitRatio > 95
+                  ? "text-green-600"
+                  : "text-amber-600"
+              }`}
+            >
+              {stats.cacheHitRatio ? `${stats.cacheHitRatio}%` : "N/A"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {stats.cacheHitRatio && stats.cacheHitRatio > 95
+                ? "Good"
+                : "Should be >95%"}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Active Connections</p>
+            <p className="text-2xl font-semibold">
+              {stats.activeConnections ?? "N/A"}
+            </p>
           </div>
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Database Size</p>
             <p className="text-2xl font-semibold">{stats.databaseSize}</p>
           </div>
-
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total Tables</p>
-            <p className="text-2xl font-semibold">{stats.tableCount}</p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Schemas</p>
-            <p className="text-2xl font-semibold">{stats.schemaCount}</p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Current User</p>
-            <p className="text-2xl font-semibold">{stats.currentUser}</p>
-          </div>
-
-          {health.serverTime && (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Server Time</p>
-              <p className="text-sm font-mono">
-                {new Date(health.serverTime).toLocaleString()}
-              </p>
-            </div>
-          )}
         </div>
 
-        {health.serverVersion && (
-          <div className="pt-4 border-t">
-            <p className="text-sm text-muted-foreground">PostgreSQL Version</p>
-            <p className="text-sm font-mono mt-1">{health.serverVersion}</p>
+        <Separator />
+
+        {/* Table Activity */}
+        {stats.tableActivity.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="text-md font-semibold">Most Active Tables</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Table</th>
+                    <th className="text-right p-2">Seq Scans</th>
+                    <th className="text-right p-2">Index Scans</th>
+                    <th className="text-right p-2">Inserts</th>
+                    <th className="text-right p-2">Updates</th>
+                    <th className="text-right p-2">Deletes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.tableActivity.map((table) => (
+                    <tr key={table.tablename} className="border-b">
+                      <td className="p-2 font-mono">{table.tablename}</td>
+                      <td className="text-right p-2">
+                        {table.seq_scan.toLocaleString()}
+                      </td>
+                      <td className="text-right p-2">
+                        {table.idx_scan.toLocaleString()}
+                      </td>
+                      <td className="text-right p-2">
+                        {table.n_tup_ins.toLocaleString()}
+                      </td>
+                      <td className="text-right p-2">
+                        {table.n_tup_upd.toLocaleString()}
+                      </td>
+                      <td className="text-right p-2">
+                        {table.n_tup_del.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Table Sizes */}
+        {stats.tableSizes.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="text-md font-semibold">Largest Tables</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {stats.tableSizes.map((table) => (
+                <div
+                  key={table.tablename}
+                  className="flex justify-between items-center p-2 bg-muted/50 rounded"
+                >
+                  <span className="font-mono text-sm">{table.tablename}</span>
+                  <span className="text-sm font-semibold">{table.size}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Performance Warnings */}
+        {stats.missingIndexes.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="text-md font-semibold text-amber-600">
+              Tables with High Sequential Scans
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              These tables might benefit from indexes
+            </p>
+            <div className="space-y-2">
+              {stats.missingIndexes.map((table) => (
+                <div
+                  key={table.tablename}
+                  className="flex justify-between items-center p-2 bg-amber-50 dark:bg-amber-950 rounded"
+                >
+                  <span className="font-mono text-sm">{table.tablename}</span>
+                  <span className="text-sm">
+                    {table.seq_scan} scans, avg {table.avg_seq_read} rows/scan
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Unused Indexes */}
+        {stats.unusedIndexes.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="text-md font-semibold text-blue-600">
+              Unused Indexes
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              Consider dropping these indexes to save space
+            </p>
+            <div className="space-y-2">
+              {stats.unusedIndexes.map((index) => (
+                <div
+                  key={index.indexname}
+                  className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-950 rounded"
+                >
+                  <span className="font-mono text-sm">{index.indexname}</span>
+                  <span className="text-sm text-muted-foreground">
+                    on {index.tablename}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Slow Queries */}
+        {stats.slowQueries.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="text-md font-semibold text-red-600">
+              Long-Running Queries
+            </h4>
+            <div className="space-y-2">
+              {stats.slowQueries.map((query, idx) => (
+                <div
+                  key={`${query.query_start}-${idx}`}
+                  className="p-2 bg-red-50 dark:bg-red-950 rounded space-y-1"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold">
+                      Running for {Math.round(query.duration_seconds)}s
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {query.state}
+                    </span>
+                  </div>
+                  <p className="text-xs font-mono text-muted-foreground truncate">
+                    {query.query.substring(0, 100)}...
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -262,8 +425,8 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center gap-2">
-          <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Checking database connection...</span>
+          <Plug className="h-5 w-5 animate-pulse" />
+          <span>Connecting to database...</span>
         </div>
       </div>
     );
@@ -271,7 +434,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">Based</h1>
           <p className="text-lg text-muted-foreground">

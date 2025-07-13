@@ -15,6 +15,7 @@ import {
   insertTableRow,
   renameSchema,
   renameTable,
+  testDatabaseConnection,
 } from "./db";
 
 /**
@@ -294,11 +295,68 @@ export async function fetchDatabaseStats() {
     console.error("Error fetching database stats:", error);
     return {
       success: false,
+      cacheHitRatio: null,
+      activeConnections: null,
       databaseSize: "Unknown",
-      tableCount: 0,
-      schemaCount: 0,
-      databaseName: "Unknown",
-      currentUser: "Unknown",
+      tableActivity: [],
+      tableSizes: [],
+      missingIndexes: [],
+      unusedIndexes: [],
+      slowQueries: [],
+      error: `Failed to fetch database stats: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to test database connection with custom configuration
+ */
+export async function testCustomDatabaseConnection(config: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  try {
+    const result = await testDatabaseConnection(config);
+    return result;
+  } catch (error) {
+    console.error("Error testing custom database connection:", error);
+    return {
+      connected: false,
+      serverTime: null,
+      serverVersion: null,
+      message: `Failed to test database connection: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to fetch database statistics with custom configuration
+ */
+export async function fetchDatabaseStatsWithConfig(config: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  try {
+    const result = await getDatabaseStats(config);
+    return result;
+  } catch (error) {
+    console.error("Error fetching database stats with custom config:", error);
+    return {
+      success: false,
+      cacheHitRatio: null,
+      activeConnections: null,
+      databaseSize: "Unknown",
+      tableActivity: [],
+      tableSizes: [],
+      missingIndexes: [],
+      unusedIndexes: [],
+      slowQueries: [],
       error: `Failed to fetch database stats: ${error}`,
     };
   }

@@ -832,55 +832,206 @@ export async function checkDatabaseHealth() {
 }
 
 /**
- * Gets database statistics for the homepage
- * @returns Object containing database statistics
+ * Tests database connection with custom configuration
+ * @param customConfig Custom database configuration
+ * @returns Object containing connection status and information
  */
-export async function getDatabaseStats() {
+export async function testDatabaseConnection(customConfig: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  let testConnection: SQL | null = null;
   try {
-    // Get database size
-    const sizeResult = await db`
-      SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;
-    `;
+    // Create a temporary connection with custom config
+    testConnection = new SQL(customConfig);
 
-    // Get total number of tables across all schemas
-    const tableCountResult = await db`
-      SELECT COUNT(*) as table_count
-      FROM information_schema.tables
-      WHERE table_type = 'BASE TABLE'
-      AND table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast');
-    `;
+    // Test the connection
+    const result =
+      await testConnection`SELECT NOW() as server_time, version() as server_version`;
 
-    // Get total number of schemas (excluding system schemas)
-    const schemaCountResult = await db`
-      SELECT COUNT(*) as schema_count
-      FROM information_schema.schemata
-      WHERE schema_name NOT LIKE 'pg_%'
-      AND schema_name != 'information_schema';
-    `;
+    return {
+      connected: true,
+      serverTime: result[0]?.server_time,
+      serverVersion: result[0]?.server_version,
+      message: "Database connection is healthy",
+    };
+  } catch (error) {
+    console.error("Test database connection failed:", error);
+    return {
+      connected: false,
+      serverTime: null,
+      serverVersion: null,
+      message: `Database connection failed: ${error}`,
+    };
+  } finally {
+    // Always close the test connection
+    if (testConnection) {
+      try {
+        testConnection.close();
+      } catch (closeError) {
+        console.warn("Error closing test connection:", closeError);
+      }
+    }
+  }
+}
 
-    // Get database name and current user
-    const dbInfoResult = await db`
-      SELECT current_database() as database_name, current_user as current_user;
-    `;
+/**
+ * Creates a temporary connection for custom operations
+ * @param customConfig Custom database configuration
+ * @returns SQL instance or null if connection failed
+ */
+async function createTempConnection(customConfig: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  try {
+    return new SQL(customConfig);
+  } catch (error) {
+    console.error("Failed to create temporary connection:", error);
+    return null;
+  }
+}
+
+/**
+ * Gets performance-focused database statistics for developers
+ * @param customConfig Optional custom database configuration
+ * @returns Object containing performance metrics and statistics
+ */
+export async function getDatabaseStats(customConfig?: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}) {
+  let connection = db;
+  let shouldCloseConnection = false;
+
+  try {
+    // Use custom connection if provided
+    if (customConfig) {
+      const tempConnection = await createTempConnection(customConfig);
+      if (!tempConnection) {
+        throw new Error("Failed to create connection with custom config");
+      }
+      connection = tempConnection;
+      shouldCloseConnection = true;
+    }
+
+    // Execute all queries in parallel using Promise.allSettled for resilience
+    const results = await Promise.allSettled([
+      // Cache hit ratio (should be >95% in dev)
+      connection`
+        SELECT round(blks_hit*100.0/(blks_hit+blks_read), 2) as cache_hit_ratio
+        FROM pg_stat_database WHERE datname = current_database();
+      `,
+
+      // Active connections
+      connection`
+        SELECT count(*) as active_connections
+        FROM pg_stat_activity WHERE state = 'active';
+      `,
+
+      // Database size
+      connection`
+        SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;
+      `,
+
+      // Table activity (most active tables)
+      connection`
+        SELECT tablename, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch,
+               n_tup_ins, n_tup_upd, n_tup_del
+        FROM pg_stat_user_tables 
+        ORDER BY seq_scan + idx_scan DESC
+        LIMIT 5;
+      `,
+
+      // Table sizes (largest tables in public schema)
+      connection`
+        SELECT tablename, 
+               pg_size_pretty(pg_relation_size(tablename::regclass)) as size
+        FROM pg_tables 
+        WHERE schemaname = 'public' 
+        ORDER BY pg_relation_size(tablename::regclass) DESC
+        LIMIT 5;
+      `,
+
+      // Missing indexes (tables with high seq_scan/seq_tup_read ratio)
+      connection`
+        SELECT tablename, seq_scan, seq_tup_read, 
+               CASE WHEN seq_scan > 0 THEN round(seq_tup_read::numeric/seq_scan, 2) ELSE 0 END as avg_seq_read
+        FROM pg_stat_user_tables 
+        WHERE seq_scan > 0 
+        ORDER BY seq_tup_read DESC
+        LIMIT 5;
+      `,
+
+      // Unused indexes
+      connection`
+        SELECT tablename, indexname, idx_scan
+        FROM pg_stat_user_indexes 
+        WHERE idx_scan = 0
+        LIMIT 5;
+      `,
+
+      // Slow/long-running queries
+      connection`
+        SELECT query, state, query_start, 
+               EXTRACT(EPOCH FROM (now() - query_start)) as duration_seconds
+        FROM pg_stat_activity 
+        WHERE state = 'active' AND now() - query_start > interval '1 second'
+        LIMIT 5;
+      `,
+    ]);
 
     return {
       success: true,
-      databaseSize: sizeResult[0]?.database_size || "Unknown",
-      tableCount: Number(tableCountResult[0]?.table_count) || 0,
-      schemaCount: Number(schemaCountResult[0]?.schema_count) || 0,
-      databaseName: dbInfoResult[0]?.database_name || "Unknown",
-      currentUser: dbInfoResult[0]?.current_user || "Unknown",
+      cacheHitRatio:
+        results[0].status === "fulfilled"
+          ? results[0].value[0]?.cache_hit_ratio
+          : null,
+      activeConnections:
+        results[1].status === "fulfilled"
+          ? Number(results[1].value[0]?.active_connections)
+          : null,
+      databaseSize:
+        results[2].status === "fulfilled"
+          ? results[2].value[0]?.database_size
+          : "Error",
+      tableActivity: results[3].status === "fulfilled" ? results[3].value : [],
+      tableSizes: results[4].status === "fulfilled" ? results[4].value : [],
+      missingIndexes: results[5].status === "fulfilled" ? results[5].value : [],
+      unusedIndexes: results[6].status === "fulfilled" ? results[6].value : [],
+      slowQueries: results[7].status === "fulfilled" ? results[7].value : [],
     };
   } catch (error) {
     console.error("Error fetching database stats:", error);
     return {
       success: false,
+      cacheHitRatio: null,
+      activeConnections: null,
       databaseSize: "Unknown",
-      tableCount: 0,
-      schemaCount: 0,
-      databaseName: "Unknown",
-      currentUser: "Unknown",
+      tableActivity: [],
+      tableSizes: [],
+      missingIndexes: [],
+      unusedIndexes: [],
+      slowQueries: [],
       error: `Failed to fetch database stats: ${error}`,
     };
+  } finally {
+    // Close temporary connection if created
+    if (shouldCloseConnection && connection) {
+      try {
+        connection.close();
+      } catch (closeError) {
+        console.warn("Error closing temporary connection:", closeError);
+      }
+    }
   }
 }
