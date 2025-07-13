@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import {
+  checkDatabaseHealth,
   fetchDatabaseStats,
   fetchDatabaseStatsWithConfig,
   testCustomDatabaseConnection,
@@ -80,7 +82,33 @@ export default function Home() {
     database: config.database,
   });
 
-  const connectToDatabase = useCallback(async () => {
+  // Connect with default config on initial load
+  const connectWithDefaultConfig = useCallback(async () => {
+    try {
+      setLoading(true);
+      const healthResult = await checkDatabaseHealth();
+      setHealth(healthResult);
+
+      if (healthResult.connected) {
+        const statsResult = await fetchDatabaseStats();
+        setStats(statsResult);
+      } else {
+        setStats(null);
+      }
+    } catch (error) {
+      console.error("Error connecting to database:", error);
+      setHealth({
+        connected: false,
+        message: `Connection failed: ${error}`,
+      });
+      setStats(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Connect with custom config from form
+  const connectWithCustomConfig = useCallback(async () => {
     try {
       setConnecting(true);
       const healthResult = await testCustomDatabaseConnection(connectionConfig);
@@ -101,14 +129,14 @@ export default function Home() {
       });
       setStats(null);
     } finally {
-      setLoading(false);
       setConnecting(false);
     }
   }, [connectionConfig]);
 
+  // Connect with default config on initial load
   useEffect(() => {
-    connectToDatabase();
-  }, [connectToDatabase]);
+    connectWithDefaultConfig();
+  }, [connectWithDefaultConfig]);
 
   const ConnectionIndicator = () => (
     <div className="w-full flex items-center gap-3 p-4 rounded-lg border bg-card">
@@ -212,7 +240,7 @@ export default function Home() {
 
       <div className="flex gap-2">
         <Button
-          onClick={connectToDatabase}
+          onClick={connectWithCustomConfig}
           disabled={connecting}
           className="flex items-center gap-2"
         >
@@ -433,21 +461,28 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight">Based</h1>
-          <p className="text-lg text-muted-foreground">
-            Browser-based database UI for PostgreSQL
-          </p>
-        </div>
+    <SidebarInset>
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <h1 className="text-lg font-semibold">Database Dashboard</h1>
+      </header>
+      <div className="flex-1 p-6">
+        <div className="max-w-none space-y-8">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold tracking-tight">Based</h1>
+            <p className="text-lg text-muted-foreground">
+              Browser-based database UI for PostgreSQL
+            </p>
+          </div>
 
-        <div className="space-y-6">
-          <ConnectionIndicator />
-          <ConnectionForm />
-          <DatabaseStatsSection />
+          <div className="space-y-6">
+            <ConnectionIndicator />
+            <ConnectionForm />
+            <DatabaseStatsSection />
+          </div>
         </div>
       </div>
-    </div>
+    </SidebarInset>
   );
 }
