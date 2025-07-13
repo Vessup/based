@@ -29,7 +29,10 @@ export function SQLQueryWorkspace({
   const searchParams = useSearchParams();
   const queryId = searchParams.get("queryId");
 
-  const { getQuery, updateQuery } = useCustomQueries({ database, schema });
+  const { getQuery, updateQuery, isLoaded } = useCustomQueries({
+    database,
+    schema,
+  });
 
   const [currentQuery, setCurrentQuery] = useState("");
   const [execution, setExecution] = useState<QueryExecution>({
@@ -136,7 +139,18 @@ export function SQLQueryWorkspace({
     );
   }
 
-  // Show message if query not found
+  // Show loading state while queries are loading
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-muted-foreground mb-2">Loading query...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if query not found (only after queries are loaded)
   if (!activeQuery) {
     return (
       <div className="flex items-center justify-center h-64">
