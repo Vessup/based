@@ -115,11 +115,11 @@ export function QueryTabs({
       <div className="flex items-center border-b bg-background">
         <div className="flex flex-1 overflow-x-auto">
           {queries.map((query) => (
-            <ContextMenuTrigger key={query.id}>
-              <ContextMenu>
-                <ContextMenuTrigger>
-                  <div
-                    className={`
+            <ContextMenu key={query.id}>
+              <ContextMenuTrigger>
+                <button
+                  type="button"
+                  className={`
                       flex items-center px-3 py-2 border-r cursor-pointer whitespace-nowrap min-w-0 max-w-48
                       ${
                         activeQueryId === query.id
@@ -127,51 +127,42 @@ export function QueryTabs({
                           : "bg-muted/50 hover:bg-muted"
                       }
                     `}
-                    onClick={() => onSelectQuery(query.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onSelectQuery(query.id);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
+                  onClick={() => onSelectQuery(query.id)}
+                >
+                  <span className="truncate text-sm" title={query.name}>
+                    {query.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 ml-2 hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={(e) => handleCloseQuery(e, query.id)}
                   >
-                    <span className="truncate text-sm" title={query.name}>
-                      {query.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 ml-2 hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={(e) => handleCloseQuery(e, query.id)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem
-                    onClick={() => handleStartRename(query.id, query.name)}
-                  >
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Rename
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => onDuplicateQuery(query.id)}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem
-                    onClick={() => onDeleteQuery(query.id)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            </ContextMenuTrigger>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </button>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onClick={() => handleStartRename(query.id, query.name)}
+                >
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Rename
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => onDuplicateQuery(query.id)}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Duplicate
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onClick={() => onDeleteQuery(query.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           ))}
         </div>
 

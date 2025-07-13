@@ -497,7 +497,16 @@ export function AppSidebar() {
           </SidebarGroup>
 
           <SidebarGroup>
-            <SidebarGroupLabel>SQL Queries</SidebarGroupLabel>
+            <SidebarGroupLabel>Queries</SidebarGroupLabel>
+            <SidebarGroupAction
+              className="mr-0.5"
+              onClick={() => {
+                // Navigate to queries page and let user create new query there
+                window.location.href = "/queries";
+              }}
+            >
+              <Plus /> <span className="sr-only">Add Query</span>
+            </SidebarGroupAction>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
