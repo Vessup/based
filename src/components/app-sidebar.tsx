@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronDown,
   Code,
+  Copy,
   Database,
   Edit2,
   MoreHorizontal,
