@@ -1,8 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { sql } from "@codemirror/lang-sql";
+import { oneDark } from "@codemirror/theme-one-dark";
+import CodeMirror from "@uiw/react-codemirror";
 import { Loader2, Play, Save } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useCallback, useState } from "react";
 
 interface SQLEditorProps {
@@ -22,9 +25,10 @@ export function SQLEditor({
   onSave,
   isExecuting = false,
   isReadOnly = false,
-  placeholder = "Enter your SQL query here...\n\nExample:\nSELECT * FROM users LIMIT 10;",
+  placeholder = "",
 }: SQLEditorProps) {
   const [isDirty, setIsDirty] = useState(false);
+  const { theme } = useTheme();
 
   const handleQueryChange = useCallback(
     (value: string) => {
@@ -105,14 +109,27 @@ export function SQLEditor({
 
       {/* SQL Editor */}
       <div className="flex-1 p-3">
-        <Textarea
+        <CodeMirror
           value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
+          onChange={(value) => handleQueryChange(value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           readOnly={isReadOnly}
-          className="h-full resize-none font-mono text-sm border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-          style={{ minHeight: "200px" }}
+          theme={theme === "dark" ? oneDark : undefined}
+          extensions={[sql()]}
+          className="h-full border-0"
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: true,
+            dropCursor: false,
+            allowMultipleSelections: false,
+            highlightSelectionMatches: false,
+          }}
+          style={{
+            minHeight: "200px",
+            fontSize: "14px",
+            fontFamily: "var(--font-mono)",
+          }}
         />
       </div>
     </div>

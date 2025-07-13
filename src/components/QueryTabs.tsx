@@ -117,30 +117,34 @@ export function QueryTabs({
           {queries.map((query) => (
             <ContextMenu key={query.id}>
               <ContextMenuTrigger>
-                <button
-                  type="button"
+                <div
                   className={`
-                      flex items-center px-3 py-2 border-r cursor-pointer whitespace-nowrap min-w-0 max-w-48
+                      flex items-center border-r cursor-pointer whitespace-nowrap min-w-0 max-w-48
                       ${
                         activeQueryId === query.id
                           ? "bg-background border-b-2 border-primary"
                           : "bg-muted/50 hover:bg-muted"
                       }
                     `}
-                  onClick={() => onSelectQuery(query.id)}
                 >
-                  <span className="truncate text-sm" title={query.name}>
-                    {query.name}
-                  </span>
+                  <button
+                    type="button"
+                    className="flex-1 px-3 py-2 text-left"
+                    onClick={() => onSelectQuery(query.id)}
+                  >
+                    <span className="truncate text-sm" title={query.name}>
+                      {query.name}
+                    </span>
+                  </button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-2 hover:bg-destructive hover:text-destructive-foreground"
+                    className="h-4 w-4 p-0 mr-2 hover:bg-destructive hover:text-destructive-foreground"
                     onClick={(e) => handleCloseQuery(e, query.id)}
                   >
                     <X className="h-3 w-3" />
                   </Button>
-                </button>
+                </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem
