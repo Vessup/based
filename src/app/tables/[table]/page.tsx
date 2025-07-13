@@ -210,7 +210,6 @@ function DateEditor({
       onChange={setValue}
       onSave={handleSave}
       onCancel={handleCancel}
-      showTextInput={false}
       showSaveCancel={true}
       autoFocus={true}
     />

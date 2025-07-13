@@ -18,7 +18,6 @@ interface DateInputProps {
   onCancel?: () => void;
   placeholder?: string;
   disabled?: boolean;
-  showTextInput?: boolean;
   showSaveCancel?: boolean;
   className?: string;
   autoFocus?: boolean;
@@ -31,7 +30,6 @@ export function DateInput({
   onCancel,
   placeholder = "YYYY-MM-DD",
   disabled = false,
-  showTextInput = true,
   showSaveCancel = false,
   className = "",
   autoFocus = false,
@@ -135,94 +133,7 @@ export function DateInput({
     }
   }, [onCancel]);
 
-  if (!showTextInput) {
-    // Calendar-only mode (for inline editing)
-    return (
-      <div className={`relative w-full h-full ${className}`}>
-        <div className="w-full h-full px-2 flex items-center">
-          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-                disabled={disabled}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {localValue ? (
-                  localValue
-                ) : (
-                  <span className="text-muted-foreground">Pick a date</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={getDateForCalendar()}
-                onSelect={handleDatePickerChange}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        {showSaveCancel && (
-          <div className="absolute -right-14 top-1/2 -translate-y-1/2 flex gap-1 bg-background border rounded shadow-sm z-50">
-            <button
-              type="button"
-              onClick={handleSave}
-              className="p-1 hover:bg-green-100 rounded-l text-green-600 border-r"
-              title="Save"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                role="img"
-                aria-label="Save"
-              >
-                <path
-                  d="M13.5 4.5L6 12L2.5 8.5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="p-1 hover:bg-red-100 rounded-r text-red-600"
-              title="Cancel (Esc)"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                role="img"
-                aria-label="Cancel"
-              >
-                <path
-                  d="M12 4L4 12M4 4L12 12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Text input + calendar picker mode (for add record)
+  // Text input + calendar picker mode
   return (
     <div className={`h-full flex items-center px-2 relative ${className}`}>
       <input
@@ -266,6 +177,58 @@ export function DateInput({
           />
         </PopoverContent>
       </Popover>
+      {showSaveCancel && (
+        <div className="absolute -right-14 top-1/2 -translate-y-1/2 flex gap-1 bg-background border rounded shadow-sm z-50">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="p-1 hover:bg-green-100 rounded-l text-green-600 border-r"
+            title="Save"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-label="Save"
+            >
+              <path
+                d="M13.5 4.5L6 12L2.5 8.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="p-1 hover:bg-red-100 rounded-r text-red-600"
+            title="Cancel (Esc)"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-label="Cancel"
+            >
+              <path
+                d="M12 4L4 12M4 4L12 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
