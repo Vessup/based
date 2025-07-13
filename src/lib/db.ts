@@ -871,10 +871,23 @@ export async function executeCustomQuery(query: string) {
       }));
     }
 
+    // Serialize Date objects to avoid React rendering errors
+    const serializedResults = result.map((row) => {
+      const serializedRow: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(row)) {
+        if (value instanceof Date) {
+          serializedRow[key] = value.toISOString();
+        } else {
+          serializedRow[key] = value;
+        }
+      }
+      return serializedRow;
+    });
+
     return {
       success: true,
       message: `Query executed successfully. ${result.length} rows returned.`,
-      results: result,
+      results: serializedResults,
       columns,
       rowCount: result.length,
     };

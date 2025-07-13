@@ -29,12 +29,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -594,41 +588,41 @@ export function AppSidebar() {
                     const isActive = currentQueryId === query.id;
                     return (
                       <SidebarMenuItem key={query.id}>
-                        <ContextMenu>
-                          <ContextMenuTrigger>
-                            <SidebarMenuButton asChild isActive={isActive}>
-                              <Link href={`/queries?queryId=${query.id}`}>
-                                <Code className="h-4 w-4" />
-                                <span className="truncate" title={query.name}>
-                                  {query.name}
-                                </span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </ContextMenuTrigger>
-                          <ContextMenuContent>
-                            <ContextMenuItem
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <Link href={`/queries?queryId=${query.id}`}>
+                            <Code className="h-4 w-4" />
+                            <span className="truncate" title={query.name}>
+                              {query.name}
+                            </span>
+                          </Link>
+                        </SidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuAction className="mr-0.5">
+                              <MoreHorizontal />
+                            </SidebarMenuAction>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start">
+                            <DropdownMenuItem
                               onClick={() =>
                                 handleStartRenameQuery(query.id, query.name)
                               }
                             >
-                              <Edit2 className="h-4 w-4 mr-2" />
-                              Rename
-                            </ContextMenuItem>
-                            <ContextMenuItem
+                              <span>Rename</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleDuplicateQuery(query.id)}
                             >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicate
-                            </ContextMenuItem>
-                            <ContextMenuItem
+                              <span>Duplicate</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleDeleteQuery(query.id)}
                               className="text-destructive focus:text-destructive"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </ContextMenuItem>
-                          </ContextMenuContent>
-                        </ContextMenu>
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </SidebarMenuItem>
                     );
                   })}
