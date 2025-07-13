@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import {
-  checkDatabaseHealth,
+  checkDatabaseConnectionHealth,
   fetchDatabaseStats,
   fetchDatabaseStatsWithConfig,
   testCustomDatabaseConnection,
@@ -86,7 +86,7 @@ export default function Home() {
   const connectWithDefaultConfig = useCallback(async () => {
     try {
       setLoading(true);
-      const healthResult = await checkDatabaseHealth();
+      const healthResult = await checkDatabaseConnectionHealth();
       setHealth(healthResult);
 
       if (healthResult.connected) {
