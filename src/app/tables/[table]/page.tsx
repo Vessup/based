@@ -653,6 +653,26 @@ export default function TablePage() {
     setIsEditing(false);
   }, []);
 
+  // Check if there are any actual changes from original data
+  const hasChanges = useMemo(() => {
+    for (const rowId of editingRows) {
+      const originalRow = data.find((row) => {
+        const id = String(row.id || row.ID || row.uuid || row.UUID);
+        return id === rowId;
+      });
+      const editedRow = editedRowsData[rowId];
+
+      if (originalRow && editedRow) {
+        for (const [key, value] of Object.entries(editedRow)) {
+          if (originalRow[key] !== value) {
+            return true; // Found at least one change
+          }
+        }
+      }
+    }
+    return false; // No changes found
+  }, [editingRows, editedRowsData, data]);
+
   // Open delete confirmation dialog for a single row
   const openRowDeleteDialog = useCallback((rowKey: string) => {
     setRowToDelete(rowKey);
@@ -1386,7 +1406,7 @@ export default function TablePage() {
           <Button
             size="sm"
             onClick={handleSaveEditedRows}
-            disabled={isEditing || Object.keys(editedRowsData).length === 0}
+            disabled={isEditing || !hasChanges}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <svg
