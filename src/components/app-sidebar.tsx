@@ -75,7 +75,12 @@ import {
   renameDatabaseSchema,
   renameTableAction,
 } from "@/lib/actions";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(["public"]);
@@ -130,6 +135,7 @@ export function AppSidebar() {
   const params = useParams<{ table: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // Query management
   const database = process.env.POSTGRES_DB || "based";
@@ -457,7 +463,7 @@ export function AppSidebar() {
       setIsCreateQueryDialogOpen(false);
       setNewQueryName("");
       // Navigate to queries page with this query selected
-      router.push(`/queries?queryId=${queryId}`);
+      router.push(`/queries/${queryId}`);
     } catch (error) {
       setQueryOperationStatus({ loading: false, error: `Error: ${error}` });
     }
@@ -486,8 +492,7 @@ export function AppSidebar() {
     try {
       deleteQuery(queryId);
       // If we're currently on this query, navigate to homepage
-      const currentQueryId = searchParams.get("queryId");
-      if (currentQueryId === queryId) {
+      if (pathname === `/queries/${queryId}`) {
         router.push("/");
       }
     } catch (error) {
@@ -499,7 +504,7 @@ export function AppSidebar() {
     try {
       const newQueryId = duplicateQuery(queryId);
       if (newQueryId) {
-        router.push(`/queries?queryId=${newQueryId}`);
+        router.push(`/queries/${newQueryId}`);
       }
     } catch (error) {
       console.error("Error duplicating query:", error);
@@ -610,12 +615,11 @@ export function AppSidebar() {
               <SidebarMenu>
                 {queriesLoaded &&
                   queries.map((query) => {
-                    const currentQueryId = searchParams.get("queryId");
-                    const isActive = currentQueryId === query.id;
+                    const isActive = pathname === `/queries/${query.id}`;
                     return (
                       <SidebarMenuItem key={query.id}>
                         <SidebarMenuButton asChild isActive={isActive}>
-                          <Link href={`/queries?queryId=${query.id}`}>
+                          <Link href={`/queries/${query.id}`}>
                             <Code className="h-4 w-4" />
                             <span className="truncate" title={query.name}>
                               {query.name}

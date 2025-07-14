@@ -2,7 +2,6 @@
 
 import { useCustomQueries } from "@/hooks/useCustomQueries";
 import { executeCustomSQLQuery } from "@/lib/actions";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { QueryResults } from "./QueryResults";
@@ -11,6 +10,7 @@ import { SQLEditor } from "./SQLEditor";
 interface SQLQueryWorkspaceProps {
   database: string;
   schema: string;
+  queryId?: string;
 }
 
 interface QueryExecution {
@@ -25,10 +25,8 @@ interface QueryExecution {
 export function SQLQueryWorkspace({
   database,
   schema,
+  queryId,
 }: SQLQueryWorkspaceProps) {
-  const searchParams = useSearchParams();
-  const queryId = searchParams.get("queryId");
-
   const { getQuery, updateQuery, isLoaded } = useCustomQueries({
     database,
     schema,
