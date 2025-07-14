@@ -1,7 +1,17 @@
 "use client";
 
 import { SQLQueryWorkspace } from "@/components/SQLQueryWorkspace";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useCustomQueries } from "@/hooks/useCustomQueries";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 
 export default function QueryPage() {
@@ -22,14 +32,28 @@ export default function QueryPage() {
   const activeQuery = queryId ? getQuery(queryId) : null;
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="border-b p-4">
-        <h1 className="text-2xl font-bold">
-          {activeQuery ? activeQuery.name : "SQL Query"}
-        </h1>
-        <p className="text-muted-foreground">
-          Create and execute custom SQL queries against your database
-        </p>
+    <div className="w-full flex flex-col min-h-svh px-4 pt-2">
+      <div className="flex items-center mb-4">
+        <div>
+          <SidebarTrigger />
+        </div>
+        <div className="ml-4">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/">Home</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {activeQuery ? activeQuery.name : "SQL Query"}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
       </div>
       <div className="flex-1">
         <SQLQueryWorkspace
