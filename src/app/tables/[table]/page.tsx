@@ -1386,7 +1386,7 @@ export default function TablePage() {
           <Button
             size="sm"
             onClick={handleSaveEditedRows}
-            disabled={isEditing}
+            disabled={isEditing || Object.keys(editedRowsData).length === 0}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <svg
