@@ -700,7 +700,7 @@ export default function TablePage() {
   const handleCancelEditedRows = useCallback(() => {
     setEditingRows(new Set());
     setEditedRowsData({});
-    setIsEditing(false);
+    setIsSaving(false);
   }, []);
 
   // Check if there are any actual changes from original data
