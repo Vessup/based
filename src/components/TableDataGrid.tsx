@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpRight,
+  Edit,
   ListFilter,
   MoreHorizontal,
   Plus,
@@ -149,8 +150,10 @@ interface TableDataGridProps {
   pagination: { total: number };
   onRefresh: () => void;
   onAddRecord: () => void;
+  onEditSelected: () => void;
   onDeleteSelected: () => void;
   refreshing: boolean;
+  isEditing: boolean;
   isDeleting: boolean;
   currentPage: number;
   pageSize: number;
@@ -178,8 +181,10 @@ export function TableDataGrid({
   pagination,
   onRefresh,
   onAddRecord,
+  onEditSelected,
   onDeleteSelected,
   refreshing,
+  isEditing,
   isDeleting,
   currentPage,
   pageSize,
@@ -392,17 +397,30 @@ export function TableDataGrid({
             {isAddingNewRow ? "Adding Record..." : "Add Record"}
           </Button>
           {selectedRows.size > 0 && (
-            <Button
-              onClick={onDeleteSelected}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              size="sm"
-            >
-              <Trash2 className="h-4 w-4" />
-              {isDeleting
-                ? "Deleting..."
-                : `Delete Selected (${selectedRows.size})`}
-            </Button>
+            <>
+              <Button
+                onClick={onEditSelected}
+                disabled={isEditing}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+              >
+                <Edit className="h-4 w-4" />
+                {isEditing
+                  ? "Editing..."
+                  : `Edit Selected (${selectedRows.size})`}
+              </Button>
+              <Button
+                onClick={onDeleteSelected}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                size="sm"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting
+                  ? "Deleting..."
+                  : `Delete Selected (${selectedRows.size})`}
+              </Button>
+            </>
           )}
           <ColumnsMenuButton
             allColumns={columns}

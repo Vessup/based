@@ -22,6 +22,7 @@ import {
   addTableRow,
   deleteRows,
   fetchTableData,
+  updateRows,
   updateTableCell,
 } from "@/lib/actions";
 import { format, isValid, parseISO } from "date-fns";
@@ -510,6 +511,11 @@ export default function TablePage() {
   // State for selected rows
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingRows, setEditingRows] = useState<Set<string>>(new Set());
+  const [editedRowsData, setEditedRowsData] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
   const [pendingDeleteAction, setPendingDeleteAction] = useState<
@@ -548,6 +554,104 @@ export default function TablePage() {
     setPendingDeleteAction("selected");
     setIsDeleteDialogOpen(true);
   };
+
+  const handleEditSelected = () => {
+    if (selectedRows.size === 0) return;
+    setIsEditing(true);
+    setEditingRows(new Set(selectedRows));
+
+    // Initialize edited row data with current values
+    const initialEditData: Record<string, Record<string, unknown>> = {};
+    for (const rowId of selectedRows) {
+      const rowData = data.find((row) => {
+        const id = String(row.id || row.ID || row.uuid || row.UUID);
+        return id === rowId;
+      });
+      if (rowData) {
+        initialEditData[rowId] = { ...rowData };
+      }
+    }
+    setEditedRowsData(initialEditData);
+  };
+
+  const handleEditedRowUpdate = useCallback(
+    (rowId: string, columnKey: string, value: unknown) => {
+      setEditedRowsData((prev) => ({
+        ...prev,
+        [rowId]: {
+          ...prev[rowId],
+          [columnKey]: value,
+        },
+      }));
+    },
+    [],
+  );
+
+  const handleSaveEditedRows = useCallback(async () => {
+    if (editingRows.size === 0) return;
+
+    setIsEditing(true);
+    try {
+      // Prepare updates data
+      const updates = Array.from(editingRows)
+        .map((rowId) => {
+          const originalRow = data.find((row) => {
+            const id = String(row.id || row.ID || row.uuid || row.UUID);
+            return id === rowId;
+          });
+          const editedRow = editedRowsData[rowId];
+
+          // Find only the changed fields
+          const changedData: Record<string, unknown> = {};
+          if (originalRow && editedRow) {
+            for (const [key, value] of Object.entries(editedRow)) {
+              if (originalRow[key] !== value) {
+                changedData[key] = value;
+              }
+            }
+          }
+
+          return {
+            id: rowId,
+            data: changedData,
+          };
+        })
+        .filter((update) => Object.keys(update.data).length > 0); // Only include rows with actual changes
+
+      if (updates.length === 0) {
+        toast.info("No changes to save");
+        setEditingRows(new Set());
+        setEditedRowsData({});
+        setIsEditing(false);
+        return;
+      }
+
+      const result = await updateRows(tableName, updates);
+
+      if (result.success) {
+        setEditingRows(new Set());
+        setEditedRowsData({});
+        setIsEditing(false);
+        setSelectedRows(new Set());
+        toast.success(result.message);
+        // Refresh the data to show updated values
+        loadTableData(true);
+      } else {
+        toast.error(result.error || result.message);
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error("Error updating rows:", error);
+      toast.error("Failed to update rows");
+      setIsEditing(false);
+    }
+  }, [editingRows, editedRowsData, data, tableName]);
+
+  const handleCancelEditedRows = useCallback(() => {
+    setEditingRows(new Set());
+    setEditedRowsData({});
+    setIsEditing(false);
+  }, []);
 
   // Open delete confirmation dialog for a single row
   const openRowDeleteDialog = useCallback((rowKey: string) => {
@@ -971,6 +1075,22 @@ export default function TablePage() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [newRowId, handleCancelNewRow, handleSaveNewRow]);
 
+  // Global keyboard listener for editing rows
+  useEffect(() => {
+    if (editingRows.size === 0) return;
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleCancelEditedRows();
+      } else if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        handleSaveEditedRows();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [editingRows.size, handleCancelEditedRows, handleSaveEditedRows]);
+
   // Create grid columns based on database columns
   const gridColumns = useMemo(() => {
     if (!columns.length) return [];
@@ -1026,6 +1146,30 @@ export default function TablePage() {
             );
           }
 
+          // Use custom formatter for editing existing rows
+          if (editingRows.has(rowId)) {
+            const isFirst = columns[0]?.column_name === column.column_name;
+            const editedRowData = editedRowsData[rowId] || props.row;
+            return (
+              <div
+                className="w-full h-full"
+                style={{ backgroundColor: "rgba(34, 197, 94, 0.1)" }}
+              >
+                <NewRowFormatter
+                  row={editedRowData}
+                  column={{ key: column.column_name, name: column.column_name }}
+                  onUpdate={(columnKey, value) =>
+                    handleEditedRowUpdate(rowId, columnKey, value)
+                  }
+                  dataType={column.data_type}
+                  onSave={handleSaveEditedRows}
+                  onCancel={handleCancelEditedRows}
+                  isFirstColumn={isFirst}
+                />
+              </div>
+            );
+          }
+
           // Use date formatter for date columns
           if (isDate) {
             return <DateFormatter value={props.row[column.column_name]} />;
@@ -1070,6 +1214,11 @@ export default function TablePage() {
     handleSaveNewRow,
     handleCancelNewRow,
     handleNewRowUpdate,
+    editingRows,
+    editedRowsData,
+    handleSaveEditedRows,
+    handleCancelEditedRows,
+    handleEditedRowUpdate,
   ]);
 
   // Handle row selection changes
@@ -1154,8 +1303,10 @@ export default function TablePage() {
         pagination={pagination}
         onRefresh={handleRefresh}
         onAddRecord={handleAddInlineRow}
+        onEditSelected={handleEditSelected}
         onDeleteSelected={openDeleteDialog}
         refreshing={refreshing}
+        isEditing={isEditing}
         isDeleting={isDeleting}
         isAddingNewRow={!!newRowId}
         currentPage={pagination.page}
@@ -1219,6 +1370,50 @@ export default function TablePage() {
             variant="outline"
             onClick={handleCancelNewRow}
             disabled={isAddingRecord}
+          >
+            Cancel (Esc)
+          </Button>
+        </div>
+      )}
+
+      {/* Floating save/cancel bar for editing rows */}
+      {editingRows.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-background border rounded-lg shadow-lg p-3 flex items-center gap-3 z-50">
+          <span className="text-sm text-muted-foreground">
+            Editing {editingRows.size} record{editingRows.size > 1 ? "s" : ""}
+            ...
+          </span>
+          <Button
+            size="sm"
+            onClick={handleSaveEditedRows}
+            disabled={isEditing}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="mr-2"
+              role="img"
+              aria-label="Save"
+            >
+              <path
+                d="M13.5 4.5L6 12L2.5 8.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Save Changes (Ctrl+Enter)
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCancelEditedRows}
+            disabled={isEditing}
           >
             Cancel (Esc)
           </Button>

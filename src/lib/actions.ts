@@ -389,3 +389,37 @@ export async function fetchDatabaseStatsWithConfig(config: {
     };
   }
 }
+
+/**
+ * Server action to update multiple rows with bulk changes
+ */
+export async function updateRows(
+  tableName: string,
+  updates: Array<{
+    id: string;
+    data: Record<string, unknown>;
+  }>,
+) {
+  try {
+    // For now, use individual cell updates for each change
+    // In the future, this could be optimized with a single bulk SQL query
+    for (const update of updates) {
+      for (const [columnName, value] of Object.entries(update.data)) {
+        await dbUpdateTableCell(tableName, update.id, columnName, value);
+      }
+    }
+
+    return {
+      success: true,
+      message: `Successfully updated ${updates.length} row(s)`,
+      error: null,
+    };
+  } catch (error) {
+    console.error(`Error updating rows in table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to update rows in table ${tableName}`,
+      error: String(error),
+    };
+  }
+}
