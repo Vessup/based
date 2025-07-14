@@ -56,7 +56,7 @@ export function DateInput({
       if (e.key === "Escape" && onCancel) {
         e.preventDefault();
         onCancel();
-      } else if (e.key === "Enter" && e.ctrlKey && onSave) {
+      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && onSave) {
         e.preventDefault();
         onSave();
       }
@@ -113,10 +113,22 @@ export function DateInput({
     if (e.key === "Escape" && onCancel) {
       e.preventDefault();
       onCancel();
-    } else if (e.key === "Enter" && e.ctrlKey && onSave) {
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && onSave) {
       e.preventDefault();
       onSave();
     } else if (e.key === "Tab") {
+      e.stopPropagation();
+    } else if (
+      [
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+      ].includes(e.key)
+    ) {
+      // Stop react-data-grid from intercepting arrow keys and other navigation keys
       e.stopPropagation();
     }
   };
@@ -149,6 +161,11 @@ export function DateInput({
         onChange={handleTextInputChange}
         placeholder={placeholder}
         onKeyDown={handleInputKeyDown}
+        onFocus={(e) => {
+          // When input receives focus, move cursor to end instead of selecting all
+          const length = e.target.value.length;
+          e.target.setSelectionRange(length, length);
+        }}
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
         disabled={disabled}
@@ -161,6 +178,12 @@ export function DateInput({
             className="absolute right-0 h-full px-2"
             onClick={(e) => {
               e.stopPropagation();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Tab") {
+                // Stop react-data-grid from intercepting tab navigation
+                e.stopPropagation();
+              }
             }}
             type="button"
             disabled={disabled}

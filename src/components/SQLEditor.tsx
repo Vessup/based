@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { getModifierKey } from "@/lib/utils";
 import { sql } from "@codemirror/lang-sql";
 import { oneDark } from "@codemirror/theme-one-dark";
 import CodeMirror from "@uiw/react-codemirror";
@@ -92,7 +93,7 @@ export function SQLEditor({
         </div>
 
         <div className="text-sm text-muted-foreground">
-          Ctrl+Enter to execute
+          {getModifierKey()}+Enter to execute
         </div>
       </div>
 

@@ -75,6 +75,13 @@ const customGridStyles = `
     overflow: visible !important;
     z-index: 9999 !important;
   }
+  
+  /* Remove focus styling from cells when they contain inputs (bulk edit mode) */
+  .rdg-cell:has(input):focus,
+  .rdg-cell:has(input):focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
   /* Style for new row */
   .rdg-row-new-row,
   .rdg .rdg-row.new-row,

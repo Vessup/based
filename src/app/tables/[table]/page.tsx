@@ -25,6 +25,7 @@ import {
   updateRows,
   updateTableCell,
 } from "@/lib/actions";
+import { getModifierKey } from "@/lib/utils";
 import { format, isValid, parseISO } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -396,7 +397,7 @@ function NewRowFormatter({
             } else if (e.key === "Escape") {
               e.preventDefault();
               onCancel?.();
-            } else if (e.key === "Enter" && e.ctrlKey) {
+            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
               onSave?.();
             } else if (e.key === "Tab") {
@@ -435,7 +436,7 @@ function NewRowFormatter({
         if (e.key === "Escape") {
           e.preventDefault();
           onCancel?.();
-        } else if (e.key === "Enter" && e.ctrlKey) {
+        } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           onSave?.();
         } else if (e.key === "Tab") {
@@ -1134,7 +1135,7 @@ export default function TablePage() {
       if (e.key === "Escape") {
         e.preventDefault();
         handleCancelNewRow();
-      } else if (e.key === "Enter" && e.ctrlKey) {
+      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         handleSaveNewRow();
       }
@@ -1151,7 +1152,7 @@ export default function TablePage() {
       if (e.key === "Escape") {
         e.preventDefault();
         handleCancelEditedRows();
-      } else if (e.key === "Enter" && e.ctrlKey) {
+      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         handleSaveEditedRows();
       }
@@ -1439,7 +1440,7 @@ export default function TablePage() {
                 strokeLinejoin="round"
               />
             </svg>
-            Save (Ctrl+Enter)
+            Save ({getModifierKey()}+Enter)
           </Button>
           <Button
             size="sm"
@@ -1483,7 +1484,7 @@ export default function TablePage() {
                 strokeLinejoin="round"
               />
             </svg>
-            Save Changes (Ctrl+Enter)
+            Save Changes ({getModifierKey()}+Enter)
           </Button>
           <Button
             size="sm"
