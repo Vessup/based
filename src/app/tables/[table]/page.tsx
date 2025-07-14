@@ -99,7 +99,14 @@ function TextEditorWithButtons({
   return (
     <div className="relative w-full h-full">
       <input
-        ref={(input) => input?.focus()}
+        ref={(input) => {
+          if (input) {
+            input.focus();
+            // Move cursor to end of input
+            const length = input.value.length;
+            input.setSelectionRange(length, length);
+          }
+        }}
         className="w-full h-full px-2 py-1 border-0 outline-none bg-transparent"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -110,6 +117,21 @@ function TextEditorWithButtons({
           } else if (e.key === "Escape") {
             e.preventDefault();
             handleCancel();
+          } else if (e.key === "Tab") {
+            // Let browser handle tab navigation
+            e.stopPropagation();
+          } else if (
+            [
+              "ArrowLeft",
+              "ArrowRight",
+              "ArrowUp",
+              "ArrowDown",
+              "Home",
+              "End",
+            ].includes(e.key)
+          ) {
+            // Stop react-data-grid from intercepting arrow keys and other navigation keys
+            e.stopPropagation();
           }
         }}
       />
@@ -296,7 +318,9 @@ function NewRowFormatter({
       const observer = new MutationObserver(() => {
         if (inputRef.current) {
           inputRef.current.focus();
-          inputRef.current.select();
+          // Move cursor to end of input
+          const length = inputRef.current.value.length;
+          inputRef.current.setSelectionRange(length, length);
           observer.disconnect();
         }
       });
@@ -311,7 +335,9 @@ function NewRowFormatter({
       const focusInput = () => {
         if (inputRef.current) {
           inputRef.current.focus();
-          inputRef.current.select();
+          // Move cursor to end of input
+          const length = inputRef.current.value.length;
+          inputRef.current.setSelectionRange(length, length);
         }
       };
 
@@ -375,6 +401,13 @@ function NewRowFormatter({
               onSave?.();
             } else if (e.key === "Tab") {
               e.stopPropagation();
+            } else if (
+              ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
+                e.key,
+              )
+            ) {
+              // Stop react-data-grid from intercepting arrow keys
+              e.stopPropagation();
             }
           }}
           onClick={(e) => e.stopPropagation()}
@@ -393,6 +426,11 @@ function NewRowFormatter({
       value={String(localValue)}
       onChange={(e) => handleChange(e.target.value)}
       placeholder={`Enter ${column.name}`}
+      onFocus={(e) => {
+        // When input receives focus, move cursor to end instead of selecting all
+        const length = e.target.value.length;
+        e.target.setSelectionRange(length, length);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -403,6 +441,18 @@ function NewRowFormatter({
         } else if (e.key === "Tab") {
           // Don't prevent default - let the browser handle tab navigation
           e.stopPropagation(); // Stop react-data-grid from intercepting
+        } else if (
+          [
+            "ArrowLeft",
+            "ArrowRight",
+            "ArrowUp",
+            "ArrowDown",
+            "Home",
+            "End",
+          ].includes(e.key)
+        ) {
+          // Stop react-data-grid from intercepting arrow keys and other navigation keys
+          e.stopPropagation();
         }
       }}
       onClick={(e) => e.stopPropagation()}
@@ -511,7 +561,7 @@ export default function TablePage() {
   // State for selected rows
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingRows, setEditingRows] = useState<Set<string>>(new Set());
   const [editedRowsData, setEditedRowsData] = useState<
     Record<string, Record<string, unknown>>
@@ -557,7 +607,6 @@ export default function TablePage() {
 
   const handleEditSelected = () => {
     if (selectedRows.size === 0) return;
-    setIsEditing(true);
     setEditingRows(new Set(selectedRows));
 
     // Initialize edited row data with current values
@@ -590,7 +639,7 @@ export default function TablePage() {
   const handleSaveEditedRows = useCallback(async () => {
     if (editingRows.size === 0) return;
 
-    setIsEditing(true);
+    setIsSaving(true);
     try {
       // Prepare updates data
       const updates = Array.from(editingRows)
@@ -622,7 +671,7 @@ export default function TablePage() {
         toast.info("No changes to save");
         setEditingRows(new Set());
         setEditedRowsData({});
-        setIsEditing(false);
+        setIsSaving(false);
         return;
       }
 
@@ -631,19 +680,19 @@ export default function TablePage() {
       if (result.success) {
         setEditingRows(new Set());
         setEditedRowsData({});
-        setIsEditing(false);
+        setIsSaving(false);
         setSelectedRows(new Set());
         toast.success(result.message);
         // Refresh the data to show updated values
         loadTableData(true);
       } else {
         toast.error(result.error || result.message);
-        setIsEditing(false);
+        setIsSaving(false);
       }
     } catch (error) {
       console.error("Error updating rows:", error);
       toast.error("Failed to update rows");
-      setIsEditing(false);
+      setIsSaving(false);
     }
   }, [editingRows, editedRowsData, data, tableName]);
 
@@ -1168,8 +1217,14 @@ export default function TablePage() {
 
           // Use custom formatter for editing existing rows
           if (editingRows.has(rowId)) {
-            const isFirst = columns[0]?.column_name === column.column_name;
+            const isFirstColumn =
+              columns[0]?.column_name === column.column_name;
             const editedRowData = editedRowsData[rowId] || props.row;
+            // Find if this is the first row being edited
+            const sortedEditingRows = Array.from(editingRows).sort();
+            const isFirstRow = sortedEditingRows[0] === rowId;
+            const shouldFocus = isFirstColumn && isFirstRow;
+
             return (
               <div
                 className="w-full h-full"
@@ -1184,7 +1239,7 @@ export default function TablePage() {
                   dataType={column.data_type}
                   onSave={handleSaveEditedRows}
                   onCancel={handleCancelEditedRows}
-                  isFirstColumn={isFirst}
+                  isFirstColumn={shouldFocus}
                 />
               </div>
             );
@@ -1326,7 +1381,8 @@ export default function TablePage() {
         onEditSelected={handleEditSelected}
         onDeleteSelected={openDeleteDialog}
         refreshing={refreshing}
-        isEditing={isEditing}
+        isSaving={isSaving}
+        isInBulkEditMode={editingRows.size > 0}
         isDeleting={isDeleting}
         isAddingNewRow={!!newRowId}
         currentPage={pagination.page}
@@ -1406,7 +1462,7 @@ export default function TablePage() {
           <Button
             size="sm"
             onClick={handleSaveEditedRows}
-            disabled={isEditing || !hasChanges}
+            disabled={isSaving || !hasChanges}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <svg
@@ -1433,7 +1489,7 @@ export default function TablePage() {
             size="sm"
             variant="outline"
             onClick={handleCancelEditedRows}
-            disabled={isEditing}
+            disabled={isSaving}
           >
             Cancel (Esc)
           </Button>

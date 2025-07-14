@@ -153,7 +153,8 @@ interface TableDataGridProps {
   onEditSelected: () => void;
   onDeleteSelected: () => void;
   refreshing: boolean;
-  isEditing: boolean;
+  isSaving: boolean;
+  isInBulkEditMode: boolean;
   isDeleting: boolean;
   currentPage: number;
   pageSize: number;
@@ -184,7 +185,8 @@ export function TableDataGrid({
   onEditSelected,
   onDeleteSelected,
   refreshing,
-  isEditing,
+  isSaving,
+  isInBulkEditMode,
   isDeleting,
   currentPage,
   pageSize,
@@ -400,14 +402,12 @@ export function TableDataGrid({
             <>
               <Button
                 onClick={onEditSelected}
-                disabled={isEditing}
+                disabled={isInBulkEditMode}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
               >
                 <Edit className="h-4 w-4" />
-                {isEditing
-                  ? "Editing..."
-                  : `Edit Selected (${selectedRows.size})`}
+                Edit Selected ({selectedRows.size})
               </Button>
               <Button
                 onClick={onDeleteSelected}
