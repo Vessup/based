@@ -7,6 +7,7 @@ import {
   deleteSchema,
   deleteTable,
   deleteTableRows,
+  executeCustomQuery,
   getDatabaseStats,
   getSchemas,
   getTableColumns,
@@ -261,6 +262,33 @@ export async function renameTableAction(
     return {
       success: false,
       message: `Failed to rename table ${oldTableName}`,
+      error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to execute a custom SQL query
+ */
+export async function executeCustomSQLQuery(query: string) {
+  try {
+    const result = await executeCustomQuery(query);
+    return {
+      success: result.success,
+      message: result.message,
+      results: result.results,
+      columns: result.columns,
+      rowCount: result.rowCount,
+      error: null,
+    };
+  } catch (error) {
+    console.error("Error executing custom SQL query:", error);
+    return {
+      success: false,
+      message: "Failed to execute SQL query",
+      results: [],
+      columns: [],
+      rowCount: 0,
       error: String(error),
     };
   }

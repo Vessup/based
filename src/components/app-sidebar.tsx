@@ -2,7 +2,18 @@
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Database, MoreHorizontal, Plus, RefreshCw, Table } from "lucide-react";
+import {
+  ChevronDown,
+  Code,
+  Copy,
+  Database,
+  Edit2,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Table,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import NProgress from "nprogress";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,12 +28,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +64,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useCustomQueries } from "@/hooks/useCustomQueries";
+import type { CustomQuery } from "@/hooks/useCustomQueries";
 import {
   createDatabaseSchema,
   deleteDatabaseSchema,
@@ -68,11 +75,23 @@ import {
   renameDatabaseSchema,
   renameTableAction,
 } from "@/lib/actions";
-import { useParams } from "next/navigation";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(["public"]);
-  const [selectedSchema, setSelectedSchema] = useState<string>("public");
+  const [selectedSchema, setSelectedSchema] = useState<string>(() => {
+    // Try to get the schema from localStorage, default to "public"
+    try {
+      return localStorage.getItem("based-current-schema") || "public";
+    } catch {
+      return "public";
+    }
+  });
   const [tables, setTables] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +133,36 @@ export function AppSidebar() {
   }>({ loading: false, error: null });
 
   const params = useParams<{ table: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Query management
+  const database = process.env.POSTGRES_DB || "based";
+  const {
+    queries,
+    isLoaded: queriesLoaded,
+    addQuery,
+    updateQuery,
+    deleteQuery,
+    getQuery,
+    duplicateQuery,
+  } = useCustomQueries({ database, schema: selectedSchema });
+
+  // Query dialog states
+  const [isCreateQueryDialogOpen, setIsCreateQueryDialogOpen] = useState(false);
+  const [isRenameQueryDialogOpen, setIsRenameQueryDialogOpen] = useState(false);
+  const [newQueryName, setNewQueryName] = useState("");
+  const [queryToRename, setQueryToRename] = useState<string | null>(null);
+  const [renameQueryName, setRenameQueryName] = useState("");
+  const [queryOperationStatus, setQueryOperationStatus] = useState<{
+    loading: boolean;
+    error: string | null;
+  }>({ loading: false, error: null });
+
+  // Refs for query dialogs
+  const createQueryInputRef = useRef<HTMLInputElement>(null);
+  const renameQueryInputRef = useRef<HTMLInputElement>(null);
 
   // State for table search
   const [tableSearch, setTableSearch] = useState("");
@@ -173,6 +222,12 @@ export function AppSidebar() {
       setIsCreateSchemaDialogOpen(true);
     } else {
       setSelectedSchema(schema);
+      // Persist the selected schema to localStorage
+      try {
+        localStorage.setItem("based-current-schema", schema);
+      } catch {
+        // Ignore localStorage errors
+      }
       setLoading(true);
       loadTables(schema);
     }
@@ -256,6 +311,30 @@ export function AppSidebar() {
     }
   }, [isRenameTableDialogOpen]);
 
+  // Focus create query input when dialog opens
+  useEffect(() => {
+    if (isCreateQueryDialogOpen) {
+      const timer = setTimeout(() => {
+        createQueryInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isCreateQueryDialogOpen]);
+
+  // Focus rename query input when dialog opens
+  useEffect(() => {
+    if (isRenameQueryDialogOpen) {
+      const timer = setTimeout(() => {
+        const input = renameQueryInputRef.current;
+        if (input) {
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isRenameQueryDialogOpen]);
+
   // Function to handle table deletion
   const handleDeleteTable = async () => {
     if (!tableToDelete) return;
@@ -285,6 +364,11 @@ export function AppSidebar() {
         // If we deleted the selected schema, switch to public
         if (schemaToDelete === selectedSchema) {
           setSelectedSchema("public");
+          try {
+            localStorage.setItem("based-current-schema", "public");
+          } catch {
+            // Ignore localStorage errors
+          }
         }
         // Refresh schemas list
         await loadSchemas();
@@ -314,6 +398,14 @@ export function AppSidebar() {
         // If we renamed the selected schema, update selection
         if (schemaToRename === selectedSchema) {
           setSelectedSchema(newSchemaNameForRename.trim());
+          try {
+            localStorage.setItem(
+              "based-current-schema",
+              newSchemaNameForRename.trim(),
+            );
+          } catch {
+            // Ignore localStorage errors
+          }
         }
         // Refresh schemas list
         await loadSchemas();
@@ -354,6 +446,68 @@ export function AppSidebar() {
       setRenameTableError(`Error: ${error}`);
     } finally {
       setIsRenamingTable(false);
+    }
+  };
+
+  // Query management functions
+  const handleCreateQuery = () => {
+    setNewQueryName("New Query");
+    setQueryOperationStatus({ loading: false, error: null });
+    setIsCreateQueryDialogOpen(true);
+  };
+
+  const handleConfirmCreateQuery = () => {
+    if (!newQueryName.trim()) return;
+    try {
+      const queryId = addQuery(newQueryName.trim(), "");
+      setIsCreateQueryDialogOpen(false);
+      setNewQueryName("");
+      // Navigate to queries page with this query selected
+      router.push(`/queries/${queryId}`);
+    } catch (error) {
+      setQueryOperationStatus({ loading: false, error: `Error: ${error}` });
+    }
+  };
+
+  const handleStartRenameQuery = (queryId: string, currentName: string) => {
+    setQueryToRename(queryId);
+    setRenameQueryName(currentName);
+    setQueryOperationStatus({ loading: false, error: null });
+    setIsRenameQueryDialogOpen(true);
+  };
+
+  const handleConfirmRenameQuery = () => {
+    if (!queryToRename || !renameQueryName.trim()) return;
+    try {
+      updateQuery(queryToRename, { name: renameQueryName.trim() });
+      setIsRenameQueryDialogOpen(false);
+      setQueryToRename(null);
+      setRenameQueryName("");
+    } catch (error) {
+      setQueryOperationStatus({ loading: false, error: `Error: ${error}` });
+    }
+  };
+
+  const handleDeleteQuery = (queryId: string) => {
+    try {
+      deleteQuery(queryId);
+      // If we're currently on this query, navigate to homepage
+      if (pathname === `/queries/${queryId}`) {
+        router.push("/");
+      }
+    } catch (error) {
+      console.error("Error deleting query:", error);
+    }
+  };
+
+  const handleDuplicateQuery = (queryId: string) => {
+    try {
+      const newQueryId = duplicateQuery(queryId);
+      if (newQueryId) {
+        router.push(`/queries/${newQueryId}`);
+      }
+    } catch (error) {
+      console.error("Error duplicating query:", error);
     }
   };
 
@@ -448,6 +602,67 @@ export function AppSidebar() {
                     )}
                   </SidebarMenuItem>
                 ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>Queries</SidebarGroupLabel>
+            <SidebarGroupAction className="mr-0.5" onClick={handleCreateQuery}>
+              <Plus /> <span className="sr-only">Add Query</span>
+            </SidebarGroupAction>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {queriesLoaded &&
+                  queries.map((query) => {
+                    const isActive = pathname === `/queries/${query.id}`;
+                    return (
+                      <SidebarMenuItem key={query.id}>
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <Link href={`/queries/${query.id}`}>
+                            <Code className="h-4 w-4" />
+                            <span className="truncate" title={query.name}>
+                              {query.name}
+                            </span>
+                          </Link>
+                        </SidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuAction className="mr-0.5">
+                              <MoreHorizontal />
+                            </SidebarMenuAction>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleStartRenameQuery(query.id, query.name)
+                              }
+                            >
+                              <span>Rename</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicateQuery(query.id)}
+                            >
+                              <span>Duplicate</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteQuery(query.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                {queriesLoaded && queries.length === 0 && (
+                  <SidebarMenuItem>
+                    <div className="text-sm text-muted-foreground px-2 py-1">
+                      No queries yet. Click + to create one.
+                    </div>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -761,6 +976,114 @@ export function AppSidebar() {
               disabled={isRenamingTable || !newTableName.trim()}
             >
               {isRenamingTable ? "Renaming..." : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Query Dialog */}
+      <Dialog
+        open={isCreateQueryDialogOpen}
+        onOpenChange={setIsCreateQueryDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Query</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new SQL query.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="new-query-name">Query name</Label>
+              <Input
+                ref={createQueryInputRef}
+                id="new-query-name"
+                value={newQueryName}
+                onChange={(e) => setNewQueryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newQueryName.trim()) {
+                    e.preventDefault();
+                    handleConfirmCreateQuery();
+                  }
+                }}
+                placeholder="Enter query name"
+                disabled={queryOperationStatus.loading}
+              />
+              {queryOperationStatus.error && (
+                <p className="text-red-500 text-sm mt-2">
+                  {queryOperationStatus.error}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateQueryDialogOpen(false)}
+              disabled={queryOperationStatus.loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmCreateQuery}
+              disabled={!newQueryName.trim() || queryOperationStatus.loading}
+            >
+              {queryOperationStatus.loading ? "Creating..." : "Create Query"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Query Dialog */}
+      <Dialog
+        open={isRenameQueryDialogOpen}
+        onOpenChange={setIsRenameQueryDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rename Query</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this query.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="rename-query-name">Query name</Label>
+              <Input
+                ref={renameQueryInputRef}
+                id="rename-query-name"
+                value={renameQueryName}
+                onChange={(e) => setRenameQueryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && renameQueryName.trim()) {
+                    e.preventDefault();
+                    handleConfirmRenameQuery();
+                  }
+                }}
+                placeholder="Enter query name"
+                disabled={queryOperationStatus.loading}
+              />
+              {queryOperationStatus.error && (
+                <p className="text-red-500 text-sm mt-2">
+                  {queryOperationStatus.error}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameQueryDialogOpen(false)}
+              disabled={queryOperationStatus.loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmRenameQuery}
+              disabled={!renameQueryName.trim() || queryOperationStatus.loading}
+            >
+              {queryOperationStatus.loading ? "Renaming..." : "Rename"}
             </Button>
           </DialogFooter>
         </DialogContent>

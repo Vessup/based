@@ -805,6 +805,104 @@ export async function updateTableCell(
 }
 
 /**
+ * Executes a custom SQL query safely
+ * @param query The SQL query to execute
+ * @returns Object containing query results or error
+ */
+export async function executeCustomQuery(query: string) {
+  try {
+    if (!query.trim()) {
+      return {
+        success: false,
+        message: "Query cannot be empty",
+        results: [],
+        columns: [],
+      };
+    }
+
+    // Prevent dangerous operations - basic protection
+    const dangerousKeywords = [
+      "DROP",
+      "DELETE",
+      "UPDATE",
+      "INSERT",
+      "CREATE",
+      "ALTER",
+      "TRUNCATE",
+      "GRANT",
+      "REVOKE",
+    ];
+
+    const upperQuery = query.toUpperCase().trim();
+    const isDangerous = dangerousKeywords.some(
+      (keyword) =>
+        upperQuery.startsWith(`${keyword} `) ||
+        upperQuery.includes(` ${keyword} `) ||
+        upperQuery.endsWith(` ${keyword}`),
+    );
+
+    if (isDangerous) {
+      return {
+        success: false,
+        message: "Only SELECT queries are allowed for security reasons",
+        results: [],
+        columns: [],
+      };
+    }
+
+    // Execute the query using db.unsafe for custom SQL
+    const result = await db.unsafe(query);
+
+    // Extract column information from the first row if available
+    let columns: Array<{ key: string; name: string; type: string }> = [];
+    if (result.length > 0) {
+      const firstRow = result[0];
+      columns = Object.keys(firstRow).map((key) => ({
+        key,
+        name: key,
+        type:
+          typeof firstRow[key] === "number"
+            ? "number"
+            : typeof firstRow[key] === "boolean"
+              ? "boolean"
+              : firstRow[key] instanceof Date
+                ? "date"
+                : "string",
+      }));
+    }
+
+    // Serialize Date objects to avoid React rendering errors
+    const serializedResults = result.map((row) => {
+      const serializedRow: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(row)) {
+        if (value instanceof Date) {
+          serializedRow[key] = value.toISOString();
+        } else {
+          serializedRow[key] = value;
+        }
+      }
+      return serializedRow;
+    });
+
+    return {
+      success: true,
+      message: `Query executed successfully. ${result.length} rows returned.`,
+      results: serializedResults,
+      columns,
+      rowCount: result.length,
+    };
+  } catch (error) {
+    console.error("Error executing custom query:", error);
+    return {
+      success: false,
+      message: `Query execution failed: ${error}`,
+      results: [],
+      columns: [],
+    };
+  }
+}
+
+/**
  * Checks if the database connection is healthy
  * @returns Object containing connection status and information
  */
@@ -947,27 +1045,27 @@ export async function getDatabaseStats(customConfig?: {
       connection`
         SELECT tablename, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch,
                n_tup_ins, n_tup_upd, n_tup_del
-        FROM pg_stat_user_tables 
+        FROM pg_stat_user_tables
         ORDER BY seq_scan + idx_scan DESC
         LIMIT 5;
       `,
 
       // Table sizes (largest tables in public schema)
       connection`
-        SELECT tablename, 
+        SELECT tablename,
                pg_size_pretty(pg_relation_size(tablename::regclass)) as size
-        FROM pg_tables 
-        WHERE schemaname = 'public' 
+        FROM pg_tables
+        WHERE schemaname = 'public'
         ORDER BY pg_relation_size(tablename::regclass) DESC
         LIMIT 5;
       `,
 
       // Missing indexes (tables with high seq_scan/seq_tup_read ratio)
       connection`
-        SELECT tablename, seq_scan, seq_tup_read, 
+        SELECT tablename, seq_scan, seq_tup_read,
                CASE WHEN seq_scan > 0 THEN round(seq_tup_read::numeric/seq_scan, 2) ELSE 0 END as avg_seq_read
-        FROM pg_stat_user_tables 
-        WHERE seq_scan > 0 
+        FROM pg_stat_user_tables
+        WHERE seq_scan > 0
         ORDER BY seq_tup_read DESC
         LIMIT 5;
       `,
@@ -975,16 +1073,16 @@ export async function getDatabaseStats(customConfig?: {
       // Unused indexes
       connection`
         SELECT tablename, indexname, idx_scan
-        FROM pg_stat_user_indexes 
+        FROM pg_stat_user_indexes
         WHERE idx_scan = 0
         LIMIT 5;
       `,
 
       // Slow/long-running queries
       connection`
-        SELECT query, state, query_start, 
+        SELECT query, state, query_start,
                EXTRACT(EPOCH FROM (now() - query_start)) as duration_seconds
-        FROM pg_stat_activity 
+        FROM pg_stat_activity
         WHERE state = 'active' AND now() - query_start > interval '1 second'
         LIMIT 5;
       `,
