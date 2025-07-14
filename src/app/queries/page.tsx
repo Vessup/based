@@ -5,10 +5,15 @@ import { useCustomQueries } from "@/hooks/useCustomQueries";
 import { useSearchParams } from "next/navigation";
 
 export default function QueriesPage() {
-  // For now, we'll use hardcoded database and schema values
-  // In a real application, these would come from the URL params or context
+  // Get the current schema from localStorage to match the sidebar selection
   const database = process.env.POSTGRES_DB || "based";
-  const schema = "public"; // Default to public schema
+  const schema = (() => {
+    try {
+      return localStorage.getItem("based-current-schema") || "public";
+    } catch {
+      return "public";
+    }
+  })();
 
   const searchParams = useSearchParams();
   const queryId = searchParams.get("queryId");

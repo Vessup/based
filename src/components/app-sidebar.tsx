@@ -79,7 +79,14 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(["public"]);
-  const [selectedSchema, setSelectedSchema] = useState<string>("public");
+  const [selectedSchema, setSelectedSchema] = useState<string>(() => {
+    // Try to get the schema from localStorage, default to "public"
+    try {
+      return localStorage.getItem("based-current-schema") || "public";
+    } catch {
+      return "public";
+    }
+  });
   const [tables, setTables] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +216,12 @@ export function AppSidebar() {
       setIsCreateSchemaDialogOpen(true);
     } else {
       setSelectedSchema(schema);
+      // Persist the selected schema to localStorage
+      try {
+        localStorage.setItem("based-current-schema", schema);
+      } catch {
+        // Ignore localStorage errors
+      }
       setLoading(true);
       loadTables(schema);
     }
@@ -345,6 +358,11 @@ export function AppSidebar() {
         // If we deleted the selected schema, switch to public
         if (schemaToDelete === selectedSchema) {
           setSelectedSchema("public");
+          try {
+            localStorage.setItem("based-current-schema", "public");
+          } catch {
+            // Ignore localStorage errors
+          }
         }
         // Refresh schemas list
         await loadSchemas();
@@ -374,6 +392,14 @@ export function AppSidebar() {
         // If we renamed the selected schema, update selection
         if (schemaToRename === selectedSchema) {
           setSelectedSchema(newSchemaNameForRename.trim());
+          try {
+            localStorage.setItem(
+              "based-current-schema",
+              newSchemaNameForRename.trim(),
+            );
+          } catch {
+            // Ignore localStorage errors
+          }
         }
         // Refresh schemas list
         await loadSchemas();
@@ -459,10 +485,10 @@ export function AppSidebar() {
   const handleDeleteQuery = (queryId: string) => {
     try {
       deleteQuery(queryId);
-      // If we're currently on this query, navigate to queries page
+      // If we're currently on this query, navigate to homepage
       const currentQueryId = searchParams.get("queryId");
       if (currentQueryId === queryId) {
-        router.push("/queries");
+        router.push("/");
       }
     } catch (error) {
       console.error("Error deleting query:", error);
