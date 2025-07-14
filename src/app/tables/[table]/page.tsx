@@ -1194,8 +1194,8 @@ export default function TablePage() {
         },
         editable: (row) => {
           const rowId = String(row.id || row.ID || row.uuid || row.UUID);
-          // Disable normal editing for new rows
-          return !(newRowId && rowId === newRowId);
+          // Disable normal editing for new rows and during bulk edit mode
+          return !(newRowId && rowId === newRowId) && editingRows.size === 0;
         },
         foreign_table_name: column.foreign_table_name,
         foreign_column_name: column.foreign_column_name,
