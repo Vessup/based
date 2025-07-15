@@ -75,7 +75,7 @@ const customGridStyles = `
     overflow: visible !important;
     z-index: 9999 !important;
   }
-  
+
   /* Remove focus styling from cells when they contain inputs (bulk edit mode) */
   .rdg-cell:has(input):focus,
   .rdg-cell:has(input):focus-visible {
@@ -441,23 +441,33 @@ export function TableDataGrid({
           />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Select
-              value={String(pageSize || 20)}
-              onValueChange={(v) => onPageSizeChange(Number(v))}
-            >
-              <SelectTrigger size="sm">
-                <SelectValue>{`${pageSize || 20} per page`}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="20">20 per page</SelectItem>
-                <SelectItem value="50">50 per page</SelectItem>
-                <SelectItem value="100">100 per page</SelectItem>
-                <SelectItem value="250">250 per page</SelectItem>
-                <SelectItem value="500">500 per page</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {pagination.total > 0 && (
+            <div className="flex items-center gap-1">
+              <Select
+                value={String(pageSize || 20)}
+                onValueChange={(v) => onPageSizeChange(Number(v))}
+              >
+                <SelectTrigger size="sm">
+                  <SelectValue>Showing {Math.min(pageSize, pagination.total)} / {pagination.total} rows</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">Show {Math.min(pagination.total, 20)}</SelectItem>
+                  {pagination.total > 20 && (
+                    <SelectItem value="50">Show {Math.min(pagination.total, 50)}</SelectItem>
+                  )}
+                  {pagination.total > 50 && (
+                    <SelectItem value="100">Show {Math.min(pagination.total, 100)}</SelectItem>
+                  )}
+                  {pagination.total > 100 && (
+                    <SelectItem value="250">Show {Math.min(pagination.total, 250)}</SelectItem>
+                  )}
+                  {pagination.total > 250 && (
+                    <SelectItem value="500">Show {Math.min(pagination.total, 500)}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -777,9 +787,6 @@ export function TableDataGrid({
             </div>
           </div>
         )}
-      </div>
-      <div className="my-4 text-sm text-muted-foreground">
-        Showing {data.length} of {pagination.total} records
       </div>
       <Toaster position="bottom-right" richColors />
     </>
