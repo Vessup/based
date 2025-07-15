@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  bulkUpdateTableRows,
   checkDatabaseHealth,
   createSchema,
   updateTableCell as dbUpdateTableCell,
@@ -392,6 +393,7 @@ export async function fetchDatabaseStatsWithConfig(config: {
 
 /**
  * Server action to update multiple rows with bulk changes
+ * Uses efficient bulk SQL operations with input validation
  */
 export async function updateRows(
   tableName: string,
@@ -401,18 +403,54 @@ export async function updateRows(
   }>,
 ) {
   try {
-    // For now, use individual cell updates for each change
-    // In the future, this could be optimized with a single bulk SQL query
-    for (const update of updates) {
-      for (const [columnName, value] of Object.entries(update.data)) {
-        await dbUpdateTableCell(tableName, update.id, columnName, value);
+    // Input validation
+    if (!tableName || typeof tableName !== "string") {
+      return {
+        success: false,
+        message: "Invalid table name provided",
+        error: "Table name must be a non-empty string",
+      };
+    }
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return {
+        success: false,
+        message: "No updates provided",
+        error: "Updates must be a non-empty array",
+      };
+    }
+
+    // Validate update structure
+    for (let i = 0; i < updates.length; i++) {
+      const update = updates[i];
+      if (!update.id || typeof update.id !== "string") {
+        return {
+          success: false,
+          message: `Invalid update at index ${i}: missing or invalid ID`,
+          error: "Each update must have a valid string ID",
+        };
+      }
+
+      if (
+        !update.data ||
+        typeof update.data !== "object" ||
+        Object.keys(update.data).length === 0
+      ) {
+        return {
+          success: false,
+          message: `Invalid update at index ${i}: missing or empty data`,
+          error: "Each update must have non-empty data object",
+        };
       }
     }
 
+    // Use the new bulk update function
+    const result = await bulkUpdateTableRows(tableName, updates);
+
     return {
-      success: true,
-      message: `Successfully updated ${updates.length} row(s)`,
-      error: null,
+      success: result.success,
+      message: result.message,
+      error: result.success ? null : result.message,
     };
   } catch (error) {
     console.error(`Error updating rows in table ${tableName}:`, error);
