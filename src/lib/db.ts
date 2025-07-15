@@ -805,6 +805,260 @@ export async function updateTableCell(
 }
 
 /**
+ * Validates column data against table schema
+ * @param tableName The name of the table
+ * @param data The data to validate
+ * @returns Object containing validation result
+ */
+async function validateColumnData(
+  tableName: string,
+  data: Record<string, unknown>,
+) {
+  try {
+    // Get table columns with their constraints
+    const columns = await db`
+      SELECT 
+        column_name,
+        data_type,
+        is_nullable,
+        character_maximum_length,
+        numeric_precision,
+        numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      AND table_name = ${tableName};
+    `;
+
+    const errors: string[] = [];
+
+    for (const [columnName, value] of Object.entries(data)) {
+      const column = columns.find(
+        (col: {
+          column_name: string;
+          data_type: string;
+          is_nullable: string;
+          character_maximum_length?: number;
+        }) => col.column_name === columnName,
+      );
+
+      if (!column) {
+        errors.push(
+          `Column '${columnName}' does not exist in table '${tableName}'`,
+        );
+        continue;
+      }
+
+      // Check nullable constraints
+      if (
+        column.is_nullable === "NO" &&
+        (value === null || value === undefined || value === "")
+      ) {
+        errors.push(`Column '${columnName}' cannot be null`);
+        continue;
+      }
+
+      // Skip further validation for null values if column is nullable
+      if (value === null || value === undefined || value === "") {
+        continue;
+      }
+
+      // Basic type validation
+      const dataType = column.data_type.toLowerCase();
+      const valueType = typeof value;
+
+      if (
+        dataType.includes("int") &&
+        valueType !== "number" &&
+        valueType !== "string"
+      ) {
+        errors.push(
+          `Column '${columnName}' expects a number, got ${valueType}`,
+        );
+      } else if (
+        dataType.includes("bool") &&
+        valueType !== "boolean" &&
+        valueType !== "string"
+      ) {
+        errors.push(
+          `Column '${columnName}' expects a boolean, got ${valueType}`,
+        );
+      } else if (dataType.includes("char") || dataType.includes("text")) {
+        // Check length constraints for string columns
+        if (column.character_maximum_length && typeof value === "string") {
+          if (value.length > column.character_maximum_length) {
+            errors.push(
+              `Column '${columnName}' value exceeds maximum length of ${column.character_maximum_length}`,
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  } catch (error) {
+    console.error(
+      `Error validating column data for table ${tableName}:`,
+      error,
+    );
+    return {
+      isValid: false,
+      errors: [`Validation error: ${error}`],
+    };
+  }
+}
+
+/**
+ * Updates multiple rows in a table with bulk operations using a transaction
+ * @param tableName The name of the table
+ * @param updates Array of updates containing row ID and data changes
+ * @returns Object containing success status and message
+ */
+export async function bulkUpdateTableRows(
+  tableName: string,
+  updates: Array<{
+    id: string;
+    data: Record<string, unknown>;
+  }>,
+) {
+  try {
+    if (!updates.length) {
+      return {
+        success: false,
+        message: "No updates provided",
+      };
+    }
+
+    // First, verify the table exists
+    const tableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+      ) AS exists;
+    `;
+
+    if (!tableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${tableName}' does not exist`,
+      };
+    }
+
+    // Determine the primary key column
+    const primaryKeyResult = await db`
+      SELECT a.attname as column_name
+      FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+      WHERE i.indrelid = ${tableName}::regclass
+      AND i.indisprimary;
+    `;
+
+    // If no primary key is found, try common ID column names
+    let primaryKeyColumn: string;
+    if (primaryKeyResult.length > 0) {
+      primaryKeyColumn = primaryKeyResult[0].column_name;
+    } else {
+      const columnResult = await db`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName};
+      `;
+
+      const columnNames = columnResult.map(
+        (col: { column_name: string }) => col.column_name,
+      );
+      const commonIdColumns = ["id", "ID", "uuid", "UUID"];
+      const foundColumn = commonIdColumns.find((col) =>
+        columnNames.includes(col),
+      );
+
+      if (!foundColumn) {
+        return {
+          success: false,
+          message: `Could not determine primary key column for table '${tableName}'`,
+        };
+      }
+      primaryKeyColumn = foundColumn;
+    }
+
+    // Validate all data before proceeding
+    for (const update of updates) {
+      const validation = await validateColumnData(tableName, update.data);
+      if (!validation.isValid) {
+        return {
+          success: false,
+          message: `Validation failed: ${validation.errors.join(", ")}`,
+        };
+      }
+    }
+
+    // Group updates by columns being changed for efficiency
+    const columnUpdates = new Map<
+      string,
+      Array<{ id: string; value: unknown }>
+    >();
+
+    for (const update of updates) {
+      for (const [columnName, value] of Object.entries(update.data)) {
+        if (!columnUpdates.has(columnName)) {
+          columnUpdates.set(columnName, []);
+        }
+        const columnList = columnUpdates.get(columnName);
+        if (columnList) {
+          columnList.push({ id: update.id, value });
+        }
+      }
+    }
+
+    // Use a transaction to ensure atomicity
+    await db.begin(async (sql) => {
+      for (const [columnName, columnData] of columnUpdates) {
+        // Build a bulk UPDATE using CASE statements for efficiency
+        // This updates all rows for a single column in one query
+        const ids = columnData.map((item) => item.id);
+        const values = columnData.map((item) => item.value);
+
+        // Create CASE statement for bulk update
+        let caseStatement = `CASE "${primaryKeyColumn}"`;
+        const params: unknown[] = [];
+
+        for (let i = 0; i < columnData.length; i++) {
+          caseStatement += ` WHEN $${params.length + 1} THEN $${params.length + 2}`;
+          params.push(columnData[i].id);
+          params.push(columnData[i].value === "" ? null : columnData[i].value);
+        }
+        caseStatement += ` ELSE "${columnName}" END`;
+
+        // Execute the bulk update for this column
+        await sql.unsafe(
+          `
+          UPDATE "${tableName}"
+          SET "${columnName}" = ${caseStatement}
+          WHERE "${primaryKeyColumn}" IN (${ids.map((_, i) => `$${params.length + 1 + i}`).join(", ")})
+        `,
+          [...params, ...ids],
+        );
+      }
+    });
+
+    return {
+      success: true,
+      message: `Successfully updated ${updates.length} row(s) in table '${tableName}'`,
+    };
+  } catch (error) {
+    console.error(`Error bulk updating rows in table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to update rows: ${error}`,
+    };
+  }
+}
+
+/**
  * Executes a custom SQL query safely
  * @param query The SQL query to execute
  * @returns Object containing query results or error

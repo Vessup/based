@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpRight,
+  Edit,
   ListFilter,
   MoreHorizontal,
   Plus,
@@ -73,6 +74,13 @@ const customGridStyles = `
   .rdg-row:has(.rdg-editor-container) {
     overflow: visible !important;
     z-index: 9999 !important;
+  }
+  
+  /* Remove focus styling from cells when they contain inputs (bulk edit mode) */
+  .rdg-cell:has(input):focus,
+  .rdg-cell:has(input):focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
   }
   /* Style for new row */
   .rdg-row-new-row,
@@ -149,8 +157,11 @@ interface TableDataGridProps {
   pagination: { total: number };
   onRefresh: () => void;
   onAddRecord: () => void;
+  onEditSelected: () => void;
   onDeleteSelected: () => void;
   refreshing: boolean;
+  isSaving: boolean;
+  isInBulkEditMode: boolean;
   isDeleting: boolean;
   currentPage: number;
   pageSize: number;
@@ -178,8 +189,11 @@ export function TableDataGrid({
   pagination,
   onRefresh,
   onAddRecord,
+  onEditSelected,
   onDeleteSelected,
   refreshing,
+  isSaving,
+  isInBulkEditMode,
   isDeleting,
   currentPage,
   pageSize,
@@ -392,17 +406,28 @@ export function TableDataGrid({
             {isAddingNewRow ? "Adding Record..." : "Add Record"}
           </Button>
           {selectedRows.size > 0 && (
-            <Button
-              onClick={onDeleteSelected}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              size="sm"
-            >
-              <Trash2 className="h-4 w-4" />
-              {isDeleting
-                ? "Deleting..."
-                : `Delete Selected (${selectedRows.size})`}
-            </Button>
+            <>
+              <Button
+                onClick={onEditSelected}
+                disabled={isInBulkEditMode}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Selected ({selectedRows.size})
+              </Button>
+              <Button
+                onClick={onDeleteSelected}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                size="sm"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting
+                  ? "Deleting..."
+                  : `Delete Selected (${selectedRows.size})`}
+              </Button>
+            </>
           )}
           <ColumnsMenuButton
             allColumns={columns}
