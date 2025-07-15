@@ -1023,7 +1023,7 @@ export async function bulkUpdateTableRows(
         const values = columnData.map((item) => item.value);
 
         // Create CASE statement for bulk update
-        let caseStatement = `CASE ${sql(primaryKeyColumn)}`;
+        let caseStatement = `CASE "${primaryKeyColumn}"`;
         const params: unknown[] = [];
 
         for (let i = 0; i < columnData.length; i++) {
@@ -1031,14 +1031,14 @@ export async function bulkUpdateTableRows(
           params.push(columnData[i].id);
           params.push(columnData[i].value === "" ? null : columnData[i].value);
         }
-        caseStatement += ` ELSE ${sql(columnName)} END`;
+        caseStatement += ` ELSE "${columnName}" END`;
 
         // Execute the bulk update for this column
         await sql.unsafe(
           `
-          UPDATE ${sql(tableName)}
-          SET ${sql(columnName)} = ${caseStatement}
-          WHERE ${sql(primaryKeyColumn)} IN (${ids.map((_, i) => `$${params.length + 1 + i}`).join(", ")})
+          UPDATE "${tableName}"
+          SET "${columnName}" = ${caseStatement}
+          WHERE "${primaryKeyColumn}" IN (${ids.map((_, i) => `$${params.length + 1 + i}`).join(", ")})
         `,
           [...params, ...ids],
         );
