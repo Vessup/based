@@ -5,6 +5,7 @@ import { executeCustomSQLQuery } from "@/lib/actions";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { QueryResults } from "./QueryResults";
+import { ResizablePanels } from "./ResizablePanels";
 import { SQLEditor } from "./SQLEditor";
 
 interface SQLQueryWorkspaceProps {
@@ -63,6 +64,17 @@ export function SQLQueryWorkspace({
       // Auto-save to localStorage if there's an active query
       if (queryId) {
         updateQuery(queryId, { query });
+      }
+    },
+    [queryId, updateQuery],
+  );
+
+  // Handle editor height changes
+  const handleHeightChange = useCallback(
+    (height: number) => {
+      // Auto-save height to localStorage if there's an active query
+      if (queryId) {
+        updateQuery(queryId, { editorHeight: height });
       }
     },
     [queryId, updateQuery],
@@ -164,30 +176,33 @@ export function SQLQueryWorkspace({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Main content area with editor and results */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* SQL Editor - takes up half the available space */}
-        <div className="h-1/2 border-b">
-          <SQLEditor
-            query={currentQuery}
-            onQueryChange={handleQueryChange}
-            onExecute={handleExecuteQuery}
-            isExecuting={execution.isLoading}
-          />
-        </div>
-
-        {/* Query Results - takes up the other half */}
-        <div className="h-1/2">
-          <QueryResults
-            results={execution.results}
-            columns={execution.columns}
-            isLoading={execution.isLoading}
-            error={execution.error}
-            message={execution.message}
-            rowCount={execution.rowCount}
-            onRefresh={() => handleExecuteQuery(currentQuery)}
-          />
-        </div>
+      {/* Main content area with resizable editor and results */}
+      <div className="flex-1 min-h-0">
+        <ResizablePanels
+          initialTopHeight={activeQuery?.editorHeight ?? 50}
+          minTopHeight={20}
+          maxTopHeight={80}
+          onHeightChange={handleHeightChange}
+          topPanel={
+            <SQLEditor
+              query={currentQuery}
+              onQueryChange={handleQueryChange}
+              onExecute={handleExecuteQuery}
+              isExecuting={execution.isLoading}
+            />
+          }
+          bottomPanel={
+            <QueryResults
+              results={execution.results}
+              columns={execution.columns}
+              isLoading={execution.isLoading}
+              error={execution.error}
+              message={execution.message}
+              rowCount={execution.rowCount}
+              onRefresh={() => handleExecuteQuery(currentQuery)}
+            />
+          }
+        />
       </div>
     </div>
   );

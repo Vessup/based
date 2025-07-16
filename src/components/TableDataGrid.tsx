@@ -448,21 +448,34 @@ export function TableDataGrid({
                 onValueChange={(v) => onPageSizeChange(Number(v))}
               >
                 <SelectTrigger size="sm">
-                  <SelectValue>Showing {Math.min(pageSize, pagination.total)} / {pagination.total} rows</SelectValue>
+                  <SelectValue>
+                    Showing {Math.min(pageSize, pagination.total)} /{" "}
+                    {pagination.total} rows
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="20">Show {Math.min(pagination.total, 20)}</SelectItem>
+                  <SelectItem value="20">
+                    Show {Math.min(pagination.total, 20)}
+                  </SelectItem>
                   {pagination.total > 20 && (
-                    <SelectItem value="50">Show {Math.min(pagination.total, 50)}</SelectItem>
+                    <SelectItem value="50">
+                      Show {Math.min(pagination.total, 50)}
+                    </SelectItem>
                   )}
                   {pagination.total > 50 && (
-                    <SelectItem value="100">Show {Math.min(pagination.total, 100)}</SelectItem>
+                    <SelectItem value="100">
+                      Show {Math.min(pagination.total, 100)}
+                    </SelectItem>
                   )}
                   {pagination.total > 100 && (
-                    <SelectItem value="250">Show {Math.min(pagination.total, 250)}</SelectItem>
+                    <SelectItem value="250">
+                      Show {Math.min(pagination.total, 250)}
+                    </SelectItem>
                   )}
                   {pagination.total > 250 && (
-                    <SelectItem value="500">Show {Math.min(pagination.total, 500)}</SelectItem>
+                    <SelectItem value="500">
+                      Show {Math.min(pagination.total, 500)}
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
