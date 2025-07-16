@@ -16,7 +16,7 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: "html",
   /* Global setup to run before all tests */
-  globalSetup: "./tests/global-setup.ts",
+  globalSetup: "./tests/setup.ts",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -32,6 +32,14 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // {
+    //   name: "firefox",
+    //   use: { ...devices["Desktop Firefox"] },
+    // },
+    // {
+    //   name: "webkit",
+    //   use: { ...devices["Desktop Safari"] },
+    // },
   ],
 
   /* Run your local dev server before starting the tests */

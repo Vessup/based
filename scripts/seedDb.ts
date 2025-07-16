@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { faker } from "@faker-js/faker";
 
-export default async function seedDb() {
+export async function seedDb() {
   logger.info("Executing seedDb");
 
   const users = Array.from({ length: 30 }, () => {
