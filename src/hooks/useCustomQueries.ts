@@ -8,6 +8,7 @@ export interface CustomQuery {
   query: string;
   createdAt: Date;
   lastModified: Date;
+  editorHeight?: number; // Height percentage for the query editor (0-100)
 }
 
 interface UseCustomQueriesOptions {
@@ -91,7 +92,10 @@ export function useCustomQueries({
 
   // Update an existing query
   const updateQuery = useCallback(
-    (id: string, updates: Partial<Pick<CustomQuery, "name" | "query">>) => {
+    (
+      id: string,
+      updates: Partial<Pick<CustomQuery, "name" | "query" | "editorHeight">>,
+    ) => {
       const newQueries = queries.map((q) =>
         q.id === id ? { ...q, ...updates, lastModified: new Date() } : q,
       );
