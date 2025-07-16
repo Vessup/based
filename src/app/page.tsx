@@ -12,7 +12,7 @@ import {
   testCustomDatabaseConnection,
 } from "@/lib/actions";
 import { Database, Plug, Settings, TrendingUp } from "lucide-react";
-import { useCallback, useEffect, useState, memo } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 
 interface DatabaseHealth {
   connected: boolean;
@@ -76,112 +76,114 @@ interface ConnectionFormProps {
   onConnect: () => void;
 }
 
-const ConnectionForm = memo(({ 
-  connectionConfig, 
-  setConnectionConfig, 
-  connecting, 
-  health, 
-  onConnect 
-}: ConnectionFormProps) => (
-  <div className="w-full space-y-6 p-6 rounded-lg border bg-card">
-    <div className="flex items-center gap-2">
-      <Settings className="h-5 w-5" />
-      <h3 className="text-lg font-semibold">Database Connection</h3>
+const ConnectionForm = memo(
+  ({
+    connectionConfig,
+    setConnectionConfig,
+    connecting,
+    health,
+    onConnect,
+  }: ConnectionFormProps) => (
+    <div className="w-full space-y-6 p-6 rounded-lg border bg-card">
+      <div className="flex items-center gap-2">
+        <Settings className="h-5 w-5" />
+        <h3 className="text-lg font-semibold">Database Connection</h3>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="host">Host</Label>
+          <Input
+            id="host"
+            value={connectionConfig.host}
+            onChange={(e) =>
+              setConnectionConfig((prev) => ({ ...prev, host: e.target.value }))
+            }
+            placeholder="localhost"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="port">Port</Label>
+          <Input
+            id="port"
+            type="number"
+            value={connectionConfig.port}
+            onChange={(e) =>
+              setConnectionConfig((prev) => ({
+                ...prev,
+                port: Number(e.target.value),
+              }))
+            }
+            placeholder="5432"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="user">User</Label>
+          <Input
+            id="user"
+            value={connectionConfig.user}
+            onChange={(e) =>
+              setConnectionConfig((prev) => ({ ...prev, user: e.target.value }))
+            }
+            placeholder="postgres"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            value={connectionConfig.password}
+            onChange={(e) =>
+              setConnectionConfig((prev) => ({
+                ...prev,
+                password: e.target.value,
+              }))
+            }
+            placeholder="••••••••"
+          />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="database">Database</Label>
+          <Input
+            id="database"
+            value={connectionConfig.database}
+            onChange={(e) =>
+              setConnectionConfig((prev) => ({
+                ...prev,
+                database: e.target.value,
+              }))
+            }
+            placeholder="based"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button
+          onClick={onConnect}
+          disabled={connecting}
+          className="flex items-center gap-2"
+        >
+          <Plug className={`h-4 w-4 ${connecting ? "animate-pulse" : ""}`} />
+          {connecting ? "Connecting..." : "Connect"}
+        </Button>
+      </div>
+
+      {health && !health.connected && (
+        <div className="p-3 rounded bg-destructive/10 border border-destructive/20">
+          <p className="text-sm text-destructive">{health.message}</p>
+        </div>
+      )}
     </div>
+  ),
+);
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="host">Host</Label>
-        <Input
-          id="host"
-          value={connectionConfig.host}
-          onChange={(e) =>
-            setConnectionConfig((prev) => ({ ...prev, host: e.target.value }))
-          }
-          placeholder="localhost"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="port">Port</Label>
-        <Input
-          id="port"
-          type="number"
-          value={connectionConfig.port}
-          onChange={(e) =>
-            setConnectionConfig((prev) => ({
-              ...prev,
-              port: Number(e.target.value),
-            }))
-          }
-          placeholder="5432"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="user">User</Label>
-        <Input
-          id="user"
-          value={connectionConfig.user}
-          onChange={(e) =>
-            setConnectionConfig((prev) => ({ ...prev, user: e.target.value }))
-          }
-          placeholder="postgres"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          value={connectionConfig.password}
-          onChange={(e) =>
-            setConnectionConfig((prev) => ({
-              ...prev,
-              password: e.target.value,
-            }))
-          }
-          placeholder="••••••••"
-        />
-      </div>
-
-      <div className="space-y-2 md:col-span-2">
-        <Label htmlFor="database">Database</Label>
-        <Input
-          id="database"
-          value={connectionConfig.database}
-          onChange={(e) =>
-            setConnectionConfig((prev) => ({
-              ...prev,
-              database: e.target.value,
-            }))
-          }
-          placeholder="based"
-        />
-      </div>
-    </div>
-
-    <div className="flex gap-2">
-      <Button
-        onClick={onConnect}
-        disabled={connecting}
-        className="flex items-center gap-2"
-      >
-        <Plug className={`h-4 w-4 ${connecting ? "animate-pulse" : ""}`} />
-        {connecting ? "Connecting..." : "Connect"}
-      </Button>
-    </div>
-
-    {health && !health.connected && (
-      <div className="p-3 rounded bg-destructive/10 border border-destructive/20">
-        <p className="text-sm text-destructive">{health.message}</p>
-      </div>
-    )}
-  </div>
-));
-
-ConnectionForm.displayName = 'ConnectionForm';
+ConnectionForm.displayName = "ConnectionForm";
 
 export default function Home() {
   const [health, setHealth] = useState<DatabaseHealth | null>(null);
@@ -283,7 +285,6 @@ export default function Home() {
       )}
     </div>
   );
-
 
   const DatabaseStatsSection = () => {
     if (!health?.connected || !stats?.success) {
@@ -506,7 +507,7 @@ export default function Home() {
 
           <div className="space-y-6">
             <ConnectionIndicator />
-            <ConnectionForm 
+            <ConnectionForm
               connectionConfig={connectionConfig}
               setConnectionConfig={setConnectionConfig}
               connecting={connecting}

@@ -577,6 +577,52 @@ export async function renameTable(oldTableName: string, newTableName: string) {
 }
 
 /**
+ * Creates a new table in the database
+ * @param schemaName The schema where the table will be created
+ * @param tableName The name of the new table
+ * @returns Object containing success status and message
+ */
+export async function createTable(schemaName: string, tableName: string) {
+  try {
+    // Check if table already exists
+    const tableExists = await db`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = ${schemaName}
+        AND table_name = ${tableName}
+      ) AS exists;
+    `;
+
+    if (tableExists[0].exists) {
+      return {
+        success: false,
+        message: `Table '${tableName}' already exists in schema '${schemaName}'`,
+      };
+    }
+
+    // Create the table with a basic structure
+    await db.unsafe(`
+      CREATE TABLE "${schemaName}"."${tableName}" (
+        id SERIAL PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    return {
+      success: true,
+      message: `Table '${tableName}' created successfully in schema '${schemaName}'`,
+    };
+  } catch (error) {
+    console.error(`Error creating table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to create table: ${error}`,
+    };
+  }
+}
+
+/**
  * Deletes a table from the database
  * @param tableName The name of the table to delete
  * @returns Object containing success status and message

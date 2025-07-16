@@ -50,6 +50,7 @@ export default defineConfig({
     timeout: 120 * 1000,
     env: {
       PORT: "3002",
+      NODE_ENV: "test",
     },
   },
 });

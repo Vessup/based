@@ -4,6 +4,7 @@ import {
   bulkUpdateTableRows,
   checkDatabaseHealth,
   createSchema,
+  createTable,
   updateTableCell as dbUpdateTableCell,
   deleteSchema,
   deleteTable,
@@ -263,6 +264,27 @@ export async function renameTableAction(
     return {
       success: false,
       message: `Failed to rename table ${oldTableName}`,
+      error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to create a new table
+ */
+export async function createTableAction(schemaName: string, tableName: string) {
+  try {
+    const result = await createTable(schemaName, tableName);
+    return {
+      success: result.success,
+      message: result.message,
+      error: null,
+    };
+  } catch (error) {
+    console.error(`Error creating table ${tableName}:`, error);
+    return {
+      success: false,
+      message: `Failed to create table ${tableName}`,
       error: String(error),
     };
   }

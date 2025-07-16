@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import NProgress from "nprogress";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -68,6 +69,7 @@ import { useCustomQueries } from "@/hooks/useCustomQueries";
 import type { CustomQuery } from "@/hooks/useCustomQueries";
 import {
   createDatabaseSchema,
+  createTableAction,
   deleteDatabaseSchema,
   deleteTableAction,
   fetchDatabaseSchemas,
@@ -118,6 +120,12 @@ export function AppSidebar() {
   const [createSchemaError, setCreateSchemaError] = useState<string | null>(
     null,
   );
+
+  // State for creating a new table
+  const [isCreateTableDialogOpen, setIsCreateTableDialogOpen] = useState(false);
+  const [newTableNameForCreate, setNewTableNameForCreate] = useState("");
+  const [isCreatingTable, setIsCreatingTable] = useState(false);
+  const [createTableError, setCreateTableError] = useState<string | null>(null);
 
   // State for schema management
   const [schemaToDelete, setSchemaToDelete] = useState<string | null>(null);
@@ -449,6 +457,38 @@ export function AppSidebar() {
     }
   };
 
+  // Function to handle table creation
+  const handleCreateTable = async () => {
+    if (!newTableNameForCreate.trim()) {
+      setCreateTableError("Table name cannot be empty");
+      return;
+    }
+
+    setIsCreatingTable(true);
+    setCreateTableError(null);
+
+    try {
+      const result = await createTableAction(
+        selectedSchema,
+        newTableNameForCreate.trim(),
+      );
+
+      if (result.success) {
+        // Refresh tables list
+        await loadTables(selectedSchema);
+        setIsCreateTableDialogOpen(false);
+        setNewTableNameForCreate("");
+        toast.success(`Table "${newTableNameForCreate}" created successfully`);
+      } else {
+        setCreateTableError(result.message || "Failed to create table");
+      }
+    } catch (error) {
+      setCreateTableError(`Error: ${error}`);
+    } finally {
+      setIsCreatingTable(false);
+    }
+  };
+
   // Query management functions
   const handleCreateQuery = () => {
     setNewQueryName("New Query");
@@ -678,7 +718,14 @@ export function AppSidebar() {
                 aria-label="Search tables"
               />
             </div>
-            <SidebarGroupAction className="mr-0.5">
+            <SidebarGroupAction
+              className="mr-0.5"
+              onClick={() => {
+                setNewTableNameForCreate("");
+                setCreateTableError(null);
+                setIsCreateTableDialogOpen(true);
+              }}
+            >
               <Plus /> <span className="sr-only">Add table</span>
             </SidebarGroupAction>
             <SidebarGroupContent>
@@ -1084,6 +1131,62 @@ export function AppSidebar() {
               disabled={!renameQueryName.trim() || queryOperationStatus.loading}
             >
               {queryOperationStatus.loading ? "Renaming..." : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Table Dialog */}
+      <Dialog
+        open={isCreateTableDialogOpen}
+        onOpenChange={setIsCreateTableDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Table</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new table in the{" "}
+              <strong>{selectedSchema}</strong> schema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="table-name">Table name</Label>
+              <Input
+                id="table-name"
+                type="text"
+                value={newTableNameForCreate}
+                onChange={(e) => setNewTableNameForCreate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    newTableNameForCreate.trim() &&
+                    !isCreatingTable
+                  ) {
+                    handleCreateTable();
+                  }
+                }}
+                placeholder="Enter table name"
+                disabled={isCreatingTable}
+              />
+              {createTableError && (
+                <p className="text-sm text-red-500">{createTableError}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateTableDialogOpen(false)}
+              disabled={isCreatingTable}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateTable}
+              disabled={isCreatingTable || !newTableNameForCreate.trim()}
+            >
+              {isCreatingTable ? "Creating..." : "Create Table"}
             </Button>
           </DialogFooter>
         </DialogContent>
