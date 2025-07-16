@@ -49,13 +49,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120 * 1000,
     env: {
-      NODE_ENV: "test",
       PORT: "3002",
-      POSTGRES_PORT: process.env.POSTGRES_TEST_PORT || "5433",
-      POSTGRES_DB: process.env.POSTGRES_TEST_DB || "based_test",
-      POSTGRES_USER: process.env.POSTGRES_TEST_USER || "postgres",
-      POSTGRES_PASSWORD: process.env.POSTGRES_TEST_PASSWORD || "postgres",
-      DB_HOST: "localhost",
     },
   },
 });

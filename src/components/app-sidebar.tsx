@@ -658,8 +658,8 @@ export function AppSidebar() {
                   })}
                 {queriesLoaded && queries.length === 0 && (
                   <SidebarMenuItem>
-                    <div className="text-sm text-muted-foreground px-2 py-1">
-                      No queries yet. Click + to create one.
+                    <div className="text-xs text-muted-foreground px-2 py-1">
+                      Click + to create your first query.
                     </div>
                   </SidebarMenuItem>
                 )}

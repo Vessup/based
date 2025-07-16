@@ -1,4 +1,7 @@
-import "dotenv/config";
+// Only load dotenvx on the server side
+if (typeof window === 'undefined') {
+  require('@dotenvx/dotenvx').config({ ignore: ['MISSING_ENV_FILE'] })
+}
 
 export const config = {
   host: process.env.DB_HOST || "localhost",

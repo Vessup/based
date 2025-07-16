@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 export default async function initializeDb() {
-  logger.info("Executing initializeDb");
+  logger.info("Executing initializeDb against {db}", { db: process.env.POSTGRES_DB });
 
   await db`
     DROP TABLE IF EXISTS "user" CASCADE;

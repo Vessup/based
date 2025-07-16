@@ -10,7 +10,7 @@ async function globalSetup() {
   logger.info("Executing Playwright globalSetup");
 
   try {
-    execSync("bun setupDbForTesting", {
+    execSync("bun setupDb", {
       cwd: resolve(__dirname, ".."),
       stdio: "inherit",
     });
