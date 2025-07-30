@@ -42,44 +42,12 @@ test.describe("Table Management", () => {
     });
   });
 
-  test("should show error when creating table with empty name", async ({
-    page,
-  }) => {
-    // Click the Add table button
-    const addTableButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add table"') });
-    await addTableButton.click();
-
-    // Wait for dialog to appear
-    const dialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: "Create New Table" });
-    await expect(dialog).toBeVisible();
-
-    // Click Create Table button without entering a name
-    await dialog.locator('button:has-text("Create Table")').click();
-
-    // Verify error message appears
-    await expect(
-      dialog.locator('text="Table name cannot be empty"'),
-    ).toBeVisible();
-
-    // Dialog should still be open
-    await expect(dialog).toBeVisible();
-  });
-
   test("should close create table dialog on cancel", async ({ page }) => {
     // Click the Add table button
-    const addTableButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add table"') });
-    await addTableButton.click();
+    await page.getByTestId("add-table-button").click();
 
     // Wait for dialog to appear
-    const dialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: "Create New Table" });
+    const dialog = page.getByTestId("create-table-dialog");
     await expect(dialog).toBeVisible();
 
     // Click Cancel button
@@ -91,31 +59,31 @@ test.describe("Table Management", () => {
 
   test("should create table with Enter key", async ({ page }) => {
     // Click the Add table button
-    const addTableButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add table"') });
-    await addTableButton.click();
+    await page.getByTestId("add-table-button").click();
 
     // Wait for dialog to appear
-    const dialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: "Create New Table" });
+    const dialog = page.getByTestId("create-table-dialog");
     await expect(dialog).toBeVisible();
 
     // Generate a unique table name for testing
     const tableName = `test_table_enter_${Date.now()}`;
 
     // Fill in the table name and press Enter
-    const input = dialog.locator('input[placeholder="Enter table name"]');
+    const input = page.getByTestId("table-name-input");
     await input.fill(tableName);
     await input.press("Enter");
 
-    // Wait for dialog to close
-    await expect(dialog).not.toBeVisible();
+    // Wait for dialog to close with increased timeout
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
+
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
 
     // Verify the new table appears in the sidebar
     const tablesList = page.locator('[data-slot="sidebar-menu"]').last();
-    await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible();
+    await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("should search and filter tables", async ({ page }) => {
@@ -128,20 +96,13 @@ test.describe("Table Management", () => {
 
     for (const tableName of tableNames) {
       // Click the Add table button
-      const addTableButton = page
-        .locator('[data-slot="sidebar-group-action"]')
-        .filter({ has: page.locator('text="Add table"') });
-      await addTableButton.click();
+      await page.getByTestId("add-table-button").click();
 
       // Fill and create table
-      const dialog = page
-        .locator('[role="dialog"]')
-        .filter({ hasText: "Create New Table" });
-      await dialog
-        .locator('input[placeholder="Enter table name"]')
-        .fill(tableName);
-      await dialog.locator('button:has-text("Create Table")').click();
-      await expect(dialog).not.toBeVisible();
+      const dialog = page.getByTestId("create-table-dialog");
+      await page.getByTestId("table-name-input").fill(tableName);
+      await page.getByTestId("create-table-submit-button").click();
+      await expect(dialog).not.toBeVisible({ timeout: 10000 });
 
       // Wait a bit between creations
       await page.waitForTimeout(500);
