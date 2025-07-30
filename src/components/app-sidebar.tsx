@@ -593,7 +593,10 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {schemas.map((schema) => (
-                  <SidebarMenuItem key={schema}>
+                  <SidebarMenuItem
+                    key={schema}
+                    data-testid={`schema-item-${schema}`}
+                  >
                     <SidebarMenuButton
                       isActive={schema === selectedSchema}
                       onClick={() => handleSchemaChange(schema)}
@@ -604,12 +607,16 @@ export function AppSidebar() {
                     {schema !== "public" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <SidebarMenuAction className="mr-0.5">
+                          <SidebarMenuAction
+                            className="mr-0.5"
+                            data-testid={`schema-menu-action-${schema}`}
+                          >
                             <MoreHorizontal />
                           </SidebarMenuAction>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="right" align="start">
                           <DropdownMenuItem
+                            data-testid={`rename-schema-${schema}`}
                             onClick={() => {
                               setSchemaToRename(schema);
                               setNewSchemaNameForRename(schema);
@@ -917,7 +924,10 @@ export function AppSidebar() {
         open={isRenameSchemaDialogOpen}
         onOpenChange={setIsRenameSchemaDialogOpen}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent
+          className="sm:max-w-[425px]"
+          data-testid="rename-schema-dialog"
+        >
           <DialogHeader>
             <DialogTitle>Rename Schema</DialogTitle>
             <DialogDescription>
@@ -932,6 +942,7 @@ export function AppSidebar() {
                 ref={renameSchemaInputRef}
                 id="new-schema-name"
                 type="text"
+                data-testid="rename-schema-input"
                 value={newSchemaNameForRename}
                 onChange={(e) => setNewSchemaNameForRename(e.target.value)}
                 onKeyDown={(e) => {
@@ -965,6 +976,7 @@ export function AppSidebar() {
             </Button>
             <Button
               onClick={handleRenameSchema}
+              data-testid="rename-schema-submit-button"
               disabled={
                 schemaOperationStatus.loading || !newSchemaNameForRename.trim()
               }

@@ -32,66 +32,68 @@ test.describe("Schema Management", () => {
 
     // Verify the new schema appears in the sidebar
     const sidebarMenu = page.locator('[data-slot="sidebar-menu"]');
-    await expect(sidebarMenu.locator(`text="${schemaName}"`)).toBeVisible({ timeout: 5000 });
+    await expect(sidebarMenu.locator(`text="${schemaName}"`)).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("should rename a schema", async ({ page }) => {
     // First create a schema to rename
-    const addSchemaButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add Schema"') });
-    await addSchemaButton.click();
+    await page.getByTestId("add-schema-button").click();
 
-    const createDialog = page
-      .locator('[role="alertdialog"]')
-      .filter({ hasText: "Create New Schema" });
+    const createDialog = page.getByTestId("create-schema-dialog");
+    await expect(createDialog).toBeVisible();
+
     const originalName = `rename_test_${Date.now()}`;
-    await createDialog
-      .locator('input[placeholder="Schema name"]')
-      .fill(originalName);
-    await createDialog.locator('button:has-text("Create Schema")').click();
-    await expect(createDialog).not.toBeVisible();
+    await page.getByTestId("schema-name-input").fill(originalName);
+    await page.getByTestId("create-schema-submit-button").click();
 
-    // Open schema popover
-    const schemaButton = page
-      .locator('[data-slot="sidebar-menu-button"]')
-      .filter({ hasText: /public|Select schema/ });
-    await schemaButton.click();
+    // Wait for dialog to close with increased timeout
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 });
+
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
 
     // Hover over the schema to show action buttons
-    const schemaItem = page
-      .locator('[data-slot="popover-content"]')
-      .locator(`div:has-text("${originalName}")`)
-      .first();
+    const schemaItem = page.getByTestId(`schema-item-${originalName}`);
     await schemaItem.hover();
 
-    // Click the rename button (edit icon)
-    const renameButton = schemaItem.locator("button").first();
-    await renameButton.click();
+    // Click the more actions button to open dropdown
+    const moreActionsButton = page.getByTestId(
+      `schema-menu-action-${originalName}`,
+    );
+    await moreActionsButton.click();
+
+    // Click the rename option
+    await page.getByTestId(`rename-schema-${originalName}`).click();
 
     // Wait for rename dialog
-    const renameDialog = page
-      .locator('[role="alertdialog"]')
-      .filter({ hasText: "Rename Schema" });
+    const renameDialog = page.getByTestId("rename-schema-dialog");
     await expect(renameDialog).toBeVisible();
 
     // Enter new name
     const newName = `renamed_${Date.now()}`;
-    const input = renameDialog.locator('input[placeholder="New schema name"]');
+    const input = page.getByTestId("rename-schema-input");
     await input.clear();
     await input.fill(newName);
 
     // Click Rename button
-    await renameDialog.locator('button:has-text("Rename")').click();
+    await page.getByTestId("rename-schema-submit-button").click();
 
     // Wait for dialog to close
-    await expect(renameDialog).not.toBeVisible();
+    await expect(renameDialog).not.toBeVisible({ timeout: 10000 });
 
-    // Verify the renamed schema appears in the popover
-    await schemaButton.click();
-    const popover = page.locator('[data-slot="popover-content"]');
-    await expect(popover.locator(`text="${newName}"`)).toBeVisible();
-    await expect(popover.locator(`text="${originalName}"`)).not.toBeVisible();
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
+
+    // Verify the renamed schema appears in the sidebar and original name is gone
+    const sidebarMenu = page.locator('[data-slot="sidebar-menu"]');
+    await expect(sidebarMenu.locator(`text="${newName}"`)).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(
+      sidebarMenu.locator(`text="${originalName}"`),
+    ).not.toBeVisible();
   });
 
   test("should delete a schema", async ({ page }) => {
