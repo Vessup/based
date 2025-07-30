@@ -729,6 +729,7 @@ export function AppSidebar() {
             </div>
             <SidebarGroupAction
               className="mr-0.5"
+              data-testid="add-table-button"
               onClick={() => {
                 setNewTableNameForCreate("");
                 setCreateTableError(null);
@@ -1161,7 +1162,7 @@ export function AppSidebar() {
         open={isCreateTableDialogOpen}
         onOpenChange={setIsCreateTableDialogOpen}
       >
-        <DialogContent>
+        <DialogContent data-testid="create-table-dialog">
           <DialogHeader>
             <DialogTitle>Create New Table</DialogTitle>
             <DialogDescription>
@@ -1175,6 +1176,7 @@ export function AppSidebar() {
               <Input
                 id="table-name"
                 type="text"
+                data-testid="table-name-input"
                 value={newTableNameForCreate}
                 onChange={(e) => setNewTableNameForCreate(e.target.value)}
                 onKeyDown={(e) => {
@@ -1204,6 +1206,7 @@ export function AppSidebar() {
             </Button>
             <Button
               onClick={handleCreateTable}
+              data-testid="create-table-submit-button"
               disabled={isCreatingTable || !newTableNameForCreate.trim()}
             >
               {isCreatingTable ? "Creating..." : "Create Table"}

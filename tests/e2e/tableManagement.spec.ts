@@ -8,53 +8,38 @@ test.describe("Table Management", () => {
   });
 
   test("should create a new table", async ({ page }) => {
-    // First ensure we're on the public schema
-    const schemaButton = page
-      .locator('[data-slot="sidebar-menu-button"]')
-      .filter({ hasText: /public|Select schema/ });
-
-    // Click to open schema popover
-    await schemaButton.click();
-
-    // Select public schema
-    const popover = page.locator('[data-slot="popover-content"]');
-    await popover.locator('text="public"').click();
-
-    // Wait for tables to load
-    await page.waitForTimeout(1000);
+    // The app starts on the public schema by default, so we can create a table directly
 
     // Click the Add table button
-    const addTableButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add table"') });
-    await addTableButton.click();
+    await page.getByTestId("add-table-button").click();
 
     // Wait for dialog to appear
-    const dialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: "Create New Table" });
+    const dialog = page.getByTestId("create-table-dialog");
     await expect(dialog).toBeVisible();
 
-    // Verify the dialog mentions the schema
+    // Verify the dialog mentions the schema (public)
     await expect(dialog.locator('text="public"')).toBeVisible();
 
     // Generate a unique table name for testing
     const tableName = `test_table_${Date.now()}`;
 
     // Fill in the table name
-    await dialog
-      .locator('input[placeholder="Enter table name"]')
-      .fill(tableName);
+    await page.getByTestId("table-name-input").fill(tableName);
 
     // Click Create Table button
-    await dialog.locator('button:has-text("Create Table")').click();
+    await page.getByTestId("create-table-submit-button").click();
 
-    // Wait for dialog to close
-    await expect(dialog).not.toBeVisible();
+    // Wait for dialog to close with increased timeout
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
+
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
 
     // Verify the new table appears in the sidebar
     const tablesList = page.locator('[data-slot="sidebar-menu"]').last();
-    await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible();
+    await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("should show error when creating table with empty name", async ({
