@@ -581,6 +581,7 @@ export function AppSidebar() {
             <SidebarGroupLabel>Schemas</SidebarGroupLabel>
             <SidebarGroupAction
               className="mr-0.5"
+              data-testid="add-schema-button"
               onClick={() => {
                 setNewSchemaName("");
                 setCreateSchemaError(null);
@@ -820,7 +821,10 @@ export function AppSidebar() {
         open={isCreateSchemaDialogOpen}
         onOpenChange={setIsCreateSchemaDialogOpen}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent
+          className="sm:max-w-[425px]"
+          data-testid="create-schema-dialog"
+        >
           <DialogHeader>
             <DialogTitle>Create New Schema</DialogTitle>
             <DialogDescription>
@@ -835,6 +839,7 @@ export function AppSidebar() {
                 ref={createSchemaInputRef}
                 id="schema-name"
                 type="text"
+                data-testid="schema-name-input"
                 value={newSchemaName}
                 onChange={(e) => setNewSchemaName(e.target.value)}
                 onKeyDown={(e) => {
@@ -867,6 +872,7 @@ export function AppSidebar() {
             <Button
               onClick={handleCreateSchema}
               disabled={isCreatingSchema}
+              data-testid="create-schema-submit-button"
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               {isCreatingSchema ? "Creating..." : "Create Schema"}

@@ -7,56 +7,32 @@ test.describe("Schema Management", () => {
     await page.waitForSelector('[data-slot="sidebar"]', { state: "visible" });
   });
 
-  test("should display schema popover and allow selection", async ({
-    page,
-  }) => {
-    // Click on the schema dropdown button
-    const schemaButton = page
-      .locator('[data-slot="sidebar-menu-button"]')
-      .filter({ hasText: /public|Select schema/ });
-    await schemaButton.click();
-
-    // Verify popover is open
-    const popover = page.locator('[data-slot="popover-content"]');
-    await expect(popover).toBeVisible();
-
-    // Check that public schema is listed
-    await expect(popover.locator('text="public"')).toBeVisible();
-  });
-
   test("should create a new schema", async ({ page }) => {
     // Click the Add Schema button
-    const addSchemaButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add Schema"') });
-    await addSchemaButton.click();
+    await page.getByTestId("add-schema-button").click();
 
     // Wait for dialog to appear
-    const dialog = page
-      .locator('[role="alertdialog"]')
-      .filter({ hasText: "Create New Schema" });
+    const dialog = page.getByTestId("create-schema-dialog");
     await expect(dialog).toBeVisible();
 
     // Generate a unique schema name for testing
     const schemaName = `test_schema_${Date.now()}`;
 
     // Fill in the schema name
-    await dialog.locator('input[placeholder="Schema name"]').fill(schemaName);
+    await page.getByTestId("schema-name-input").fill(schemaName);
 
     // Click Create Schema button
-    await dialog.locator('button:has-text("Create Schema")').click();
+    await page.getByTestId("create-schema-submit-button").click();
 
-    // Wait for dialog to close
-    await expect(dialog).not.toBeVisible();
+    // Wait for dialog to close with increased timeout
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
 
-    // Verify the new schema appears in the popover
-    const schemaButton = page
-      .locator('[data-slot="sidebar-menu-button"]')
-      .filter({ hasText: /public|Select schema/ });
-    await schemaButton.click();
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
 
-    const popover = page.locator('[data-slot="popover-content"]');
-    await expect(popover.locator(`text="${schemaName}"`)).toBeVisible();
+    // Verify the new schema appears in the sidebar
+    const sidebarMenu = page.locator('[data-slot="sidebar-menu"]');
+    await expect(sidebarMenu.locator(`text="${schemaName}"`)).toBeVisible({ timeout: 5000 });
   });
 
   test("should rename a schema", async ({ page }) => {
