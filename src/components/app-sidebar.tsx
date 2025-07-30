@@ -632,6 +632,7 @@ export function AppSidebar() {
                             <span>Rename</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            data-testid={`delete-schema-${schema}`}
                             onClick={() => {
                               setSchemaToDelete(schema);
                               setSchemaOperationStatus({
@@ -893,7 +894,7 @@ export function AppSidebar() {
         open={isDeleteSchemaDialogOpen}
         onOpenChange={setIsDeleteSchemaDialogOpen}
       >
-        <AlertDialogContent>
+        <AlertDialogContent data-testid="delete-schema-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Schema</AlertDialogTitle>
             <AlertDialogDescription>
@@ -910,6 +911,7 @@ export function AppSidebar() {
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="delete-schema-confirm-button"
               onClick={handleDeleteSchema}
               disabled={schemaOperationStatus.loading}
             >

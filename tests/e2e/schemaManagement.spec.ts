@@ -98,55 +98,51 @@ test.describe("Schema Management", () => {
 
   test("should delete a schema", async ({ page }) => {
     // First create a schema to delete
-    const addSchemaButton = page
-      .locator('[data-slot="sidebar-group-action"]')
-      .filter({ has: page.locator('text="Add Schema"') });
-    await addSchemaButton.click();
+    await page.getByTestId("add-schema-button").click();
 
-    const createDialog = page
-      .locator('[role="alertdialog"]')
-      .filter({ hasText: "Create New Schema" });
+    const createDialog = page.getByTestId("create-schema-dialog");
+    await expect(createDialog).toBeVisible();
+
     const schemaName = `delete_test_${Date.now()}`;
-    await createDialog
-      .locator('input[placeholder="Schema name"]')
-      .fill(schemaName);
-    await createDialog.locator('button:has-text("Create Schema")').click();
-    await expect(createDialog).not.toBeVisible();
+    await page.getByTestId("schema-name-input").fill(schemaName);
+    await page.getByTestId("create-schema-submit-button").click();
 
-    // Open schema popover
-    const schemaButton = page
-      .locator('[data-slot="sidebar-menu-button"]')
-      .filter({ hasText: /public|Select schema/ });
-    await schemaButton.click();
+    // Wait for dialog to close with increased timeout
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 });
+
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
 
     // Hover over the schema to show action buttons
-    const schemaItem = page
-      .locator('[data-slot="popover-content"]')
-      .locator(`div:has-text("${schemaName}")`)
-      .first();
+    const schemaItem = page.getByTestId(`schema-item-${schemaName}`);
     await schemaItem.hover();
 
-    // Click the delete button (trash icon)
-    const deleteButton = schemaItem.locator("button").nth(1);
-    await deleteButton.click();
+    // Click the more actions button to open dropdown
+    const moreActionsButton = page.getByTestId(
+      `schema-menu-action-${schemaName}`,
+    );
+    await moreActionsButton.click();
+
+    // Click the delete option
+    await page.getByTestId(`delete-schema-${schemaName}`).click();
 
     // Wait for delete confirmation dialog
-    const deleteDialog = page
-      .locator('[role="alertdialog"]')
-      .filter({ hasText: "Delete Schema" });
+    const deleteDialog = page.getByTestId("delete-schema-dialog");
     await expect(deleteDialog).toBeVisible();
     await expect(deleteDialog.locator(`text="${schemaName}"`)).toBeVisible();
 
     // Confirm deletion
-    await deleteDialog.locator('button:has-text("Delete")').click();
+    await page.getByTestId("delete-schema-confirm-button").click();
 
     // Wait for dialog to close
-    await expect(deleteDialog).not.toBeVisible();
+    await expect(deleteDialog).not.toBeVisible({ timeout: 10000 });
 
-    // Verify the schema is no longer in the popover
-    await schemaButton.click();
-    const popover = page.locator('[data-slot="popover-content"]');
-    await expect(popover.locator(`text="${schemaName}"`)).not.toBeVisible();
+    // Wait a bit for the sidebar to update
+    await page.waitForTimeout(500);
+
+    // Verify the schema is no longer in the sidebar
+    const sidebarMenu = page.locator('[data-slot="sidebar-menu"]');
+    await expect(sidebarMenu.locator(`text="${schemaName}"`)).not.toBeVisible();
   });
 
   test("should not allow deletion of public schema", async ({ page }) => {
