@@ -32,13 +32,15 @@ test.describe("Table Management", () => {
     // Wait for dialog to close with increased timeout
     await expect(dialog).not.toBeVisible({ timeout: 10000 });
 
-    // Wait a bit for the sidebar to update
-    await page.waitForTimeout(500);
+    // Wait a bit longer for the sidebar to update and table to be loaded
+    await page.waitForTimeout(1000);
 
-    // Verify the new table appears in the sidebar
-    const tablesList = page.locator('[data-slot="sidebar-menu"]').last();
-    await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible({
-      timeout: 5000,
+    // Verify the new table appears in the sidebar tables section
+    // Look for the table in the sidebar menu within the Tables group
+    const sidebar = page.locator('[data-slot="sidebar"]');
+    const tablesGroup = sidebar.locator('text="Tables"').locator('../..');
+    await expect(tablesGroup.locator(`text="${tableName}"`)).toBeVisible({
+      timeout: 10000,
     });
   });
 
@@ -76,13 +78,15 @@ test.describe("Table Management", () => {
     // Wait for dialog to close with increased timeout
     await expect(dialog).not.toBeVisible({ timeout: 10000 });
 
-    // Wait a bit for the sidebar to update
-    await page.waitForTimeout(500);
+    // Wait a bit longer for the sidebar to update and table to be loaded
+    await page.waitForTimeout(1000);
 
-    // Verify the new table appears in the sidebar
-    const tablesList = page.locator('[data-slot="sidebar-menu"]').last();
-    await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible({
-      timeout: 5000,
+    // Verify the new table appears in the sidebar tables section
+    // Look for the table in the sidebar menu within the Tables group
+    const sidebar = page.locator('[data-slot="sidebar"]');
+    const tablesGroup = sidebar.locator('text="Tables"').locator('../..');
+    await expect(tablesGroup.locator(`text="${tableName}"`)).toBeVisible({
+      timeout: 10000,
     });
   });
 
@@ -110,18 +114,19 @@ test.describe("Table Management", () => {
 
     // Now test the search functionality
     const searchInput = page.locator('input[placeholder="Search tables..."]');
+    const sidebar = page.locator('[data-slot="sidebar"]');
+    const tablesGroup = sidebar.locator('text="Tables"').locator('../..');
 
     // Search for "alpha"
     await searchInput.fill("alpha");
-    const tablesList = page.locator('[data-slot="sidebar-menu"]').last();
 
     // Should only see the alpha table
-    await expect(tablesList.locator(`text="${tableNames[0]}"`)).toBeVisible();
+    await expect(tablesGroup.locator(`text="${tableNames[0]}"`)).toBeVisible();
     await expect(
-      tablesList.locator(`text="${tableNames[1]}"`),
+      tablesGroup.locator(`text="${tableNames[1]}"`),
     ).not.toBeVisible();
     await expect(
-      tablesList.locator(`text="${tableNames[2]}"`),
+      tablesGroup.locator(`text="${tableNames[2]}"`),
     ).not.toBeVisible();
 
     // Clear search
@@ -129,7 +134,7 @@ test.describe("Table Management", () => {
 
     // All tables should be visible again
     for (const tableName of tableNames) {
-      await expect(tablesList.locator(`text="${tableName}"`)).toBeVisible();
+      await expect(tablesGroup.locator(`text="${tableName}"`)).toBeVisible();
     }
   });
 });

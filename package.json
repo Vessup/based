@@ -4,7 +4,7 @@
   "license": "CC BY-NC 4.0",
   "type": "module",
   "scripts": {
-    "dev": "bun --bun next dev",
+    "dev": "mprocs",
     "build": "bun --bun next build",
     "start": "bun --bun next start",
     "format": "biome format --write",
@@ -54,7 +54,7 @@
     "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
+    "@biomejs/biome": "^2.1.4",
     "@playwright/test": "^1.53.2",
     "@tailwindcss/postcss": "^4",
     "@types/bun": "^1.2.12",
