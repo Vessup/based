@@ -1,6 +1,6 @@
+import { faker } from "@faker-js/faker";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { faker } from "@faker-js/faker";
 
 export async function seedDb() {
   logger.info("Executing seedDb against {db}", { db: process.env.POSTGRES_DB });

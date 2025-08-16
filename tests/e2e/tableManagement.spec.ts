@@ -38,7 +38,7 @@ test.describe("Table Management", () => {
     // Verify the new table appears in the sidebar tables section
     // Look for the table in the sidebar menu within the Tables group
     const sidebar = page.locator('[data-slot="sidebar"]');
-    const tablesGroup = sidebar.locator('text="Tables"').locator('../..');
+    const tablesGroup = sidebar.locator('text="Tables"').locator("../..");
     await expect(tablesGroup.locator(`text="${tableName}"`)).toBeVisible({
       timeout: 10000,
     });
@@ -84,7 +84,7 @@ test.describe("Table Management", () => {
     // Verify the new table appears in the sidebar tables section
     // Look for the table in the sidebar menu within the Tables group
     const sidebar = page.locator('[data-slot="sidebar"]');
-    const tablesGroup = sidebar.locator('text="Tables"').locator('../..');
+    const tablesGroup = sidebar.locator('text="Tables"').locator("../..");
     await expect(tablesGroup.locator(`text="${tableName}"`)).toBeVisible({
       timeout: 10000,
     });
@@ -115,7 +115,7 @@ test.describe("Table Management", () => {
     // Now test the search functionality
     const searchInput = page.locator('input[placeholder="Search tables..."]');
     const sidebar = page.locator('[data-slot="sidebar"]');
-    const tablesGroup = sidebar.locator('text="Tables"').locator('../..');
+    const tablesGroup = sidebar.locator('text="Tables"').locator("../..");
 
     // Search for "alpha"
     await searchInput.fill("alpha");

@@ -1,13 +1,13 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { getModifierKey } from "@/lib/utils";
 import { sql } from "@codemirror/lang-sql";
 import { oneDark } from "@codemirror/theme-one-dark";
 import CodeMirror from "@uiw/react-codemirror";
 import { Loader2, Play, Save } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { getModifierKey } from "@/lib/utils";
 
 interface SQLEditorProps {
   query: string;

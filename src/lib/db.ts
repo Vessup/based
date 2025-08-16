@@ -328,7 +328,7 @@ export async function getTableData(
     const total = Number(countResult[0].total);
 
     // Build the base query
-    let query: string;
+    let query: any[];
 
     if (sortColumn && sortDirection) {
       // Validate sort direction - safer approach without db.unsafe()
@@ -336,7 +336,9 @@ export async function getTableData(
 
       // Validate that sortColumn exists in the table to prevent SQL errors
       const columns = await getTableColumns(tableName);
-      const validColumn = columns.find((c) => c.column_name === sortColumn);
+      const validColumn = columns.find(
+        (c: any) => c.column_name === sortColumn,
+      );
       if (!validColumn) {
         console.warn(`Invalid sort column: ${sortColumn}`);
         // Fall back to query without sorting
@@ -1172,7 +1174,7 @@ export async function executeCustomQuery(query: string) {
     }
 
     // Serialize Date objects to avoid React rendering errors
-    const serializedResults = result.map((row) => {
+    const serializedResults = result.map((row: any) => {
       const serializedRow: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(row)) {
         if (value instanceof Date) {

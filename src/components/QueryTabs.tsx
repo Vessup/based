@@ -1,5 +1,7 @@
 "use client";
 
+import { Copy, Edit2, Plus, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -19,8 +21,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CustomQuery } from "@/hooks/useCustomQueries";
-import { Copy, Edit2, Plus, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 interface QueryTabsProps {
   queries: CustomQuery[];

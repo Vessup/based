@@ -1,3 +1,6 @@
+import { MoreHorizontal } from "lucide-react";
+import React from "react";
+import type { Column } from "react-data-grid";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -5,9 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
-import React from "react";
-import type { Column } from "react-data-grid";
 
 interface MoreMenuButtonProps {
   selectedRows: Set<string>;

@@ -1,5 +1,7 @@
 "use client";
 
+import { Database, Plug, Settings, TrendingUp } from "lucide-react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +13,6 @@ import {
   fetchDatabaseStatsWithConfig,
   testCustomDatabaseConnection,
 } from "@/lib/actions";
-import { Database, Plug, Settings, TrendingUp } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
 
 interface DatabaseHealth {
   connected: boolean;

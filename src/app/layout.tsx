@@ -1,8 +1,9 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
+import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NProgressHandler } from "@/components/NProgressHandler";
 
@@ -31,7 +32,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NProgressHandler />
+        <Suspense fallback={null}>
+          <NProgressHandler />
+        </Suspense>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -39,7 +42,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SidebarProvider>
-            <AppSidebar />
+            <Suspense fallback={null}>
+              <AppSidebar />
+            </Suspense>
             <SidebarInset>{children}</SidebarInset>
           </SidebarProvider>
         </ThemeProvider>

@@ -1,3 +1,6 @@
+import { ListFilter } from "lucide-react";
+import { useMemo, useState } from "react";
+import type { Column } from "react-data-grid";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -6,9 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter } from "lucide-react";
-import { useMemo, useState } from "react";
-import type { Column } from "react-data-grid";
 
 interface ColumnsMenuButtonProps {
   allColumns: Column<Record<string, unknown>>[];

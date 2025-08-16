@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 import {
   ArrowDown,
@@ -15,7 +14,10 @@ import { useTheme } from "next-themes";
 import React from "react";
 import { type Column, DataGrid } from "react-data-grid";
 import { Toaster } from "sonner";
+import { Button } from "@/components/ui/button";
 import "react-data-grid/lib/styles.css";
+import { useRouter } from "next/navigation";
+import type { RenderCheckboxProps } from "react-data-grid";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Pagination,
@@ -32,8 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
-import type { RenderCheckboxProps } from "react-data-grid";
 import { ColumnsMenuButton } from "./ColumnsMenuButton";
 import { MoreMenuButton } from "./MoreMenuButton";
 
@@ -312,6 +312,8 @@ export function TableDataGrid({
         col: Column<Record<string, unknown>> & {
           foreign_table_name?: string;
           foreign_column_name?: string;
+          formatter?: any;
+          renderCell?: any;
         },
       ) => {
         // Checkbox column (SelectColumn) is usually identified by key 'select-row' or similar
@@ -327,7 +329,10 @@ export function TableDataGrid({
           : function HeaderRenderer() {
               return (
                 <SortableHeader
-                  column={{ key: col.key, name: col.name || col.key }}
+                  column={{
+                    key: col.key,
+                    name: typeof col.name === "string" ? col.name : col.key,
+                  }}
                   sortColumn={sortColumn}
                   sortDirection={sortDirection}
                   onSort={onColumnSort}

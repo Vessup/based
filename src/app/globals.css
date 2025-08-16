@@ -162,5 +162,7 @@
   background: #fff !important;
 }
 #nprogress .peg {
-  box-shadow: 0 0 10px #fff, 0 0 5px #fff !important;
+  box-shadow:
+    0 0 10px #fff,
+    0 0 5px #fff !important;
 }

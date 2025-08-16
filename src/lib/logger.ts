@@ -1,4 +1,5 @@
 import { configure, getConsoleSink, getLogger } from "@logtape/logtape";
+
 export { getLogger } from "@logtape/logtape";
 
 await configure({

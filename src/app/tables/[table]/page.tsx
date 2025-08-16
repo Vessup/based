@@ -1,5 +1,22 @@
 "use client";
 
+import { format, isValid, parseISO } from "date-fns";
+import {
+  Calendar as CalendarIcon,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type Column,
+  DataGrid,
+  type RenderEditCellProps,
+  SelectColumn,
+  textEditor,
+} from "react-data-grid";
+import { Toaster, toast } from "sonner";
 import { DateInput } from "@/components/date-input";
 import {
   AlertDialog,
@@ -27,24 +44,10 @@ import {
   updateTableCell,
 } from "@/lib/actions";
 import { getModifierKey, getRowId } from "@/lib/utils";
-import { format, isValid, parseISO } from "date-fns";
-import {
-  Calendar as CalendarIcon,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  type Column,
-  DataGrid,
-  type RenderEditCellProps,
-  SelectColumn,
-  textEditor,
-} from "react-data-grid";
-import { Toaster, toast } from "sonner";
 import "react-data-grid/lib/styles.css";
+import Link from "next/link";
+import { useTheme } from "next-themes";
+import NProgress from "nprogress";
 import { TableDataGrid } from "@/components/TableDataGrid";
 import {
   Breadcrumb,
@@ -55,9 +58,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useTheme } from "next-themes";
-import Link from "next/link";
-import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 NProgress.configure({ showSpinner: false });
 
@@ -290,11 +290,13 @@ function NewRowFormatter({
   isFirstColumn,
 }: NewRowFormatterProps) {
   // Use local state to avoid re-rendering issues
-  const [localValue, setLocalValue] = useState(row[column.key] ?? "");
+  const [localValue, setLocalValue] = useState<string | null>(
+    (row[column.key] as string | null) ?? "",
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (newValue: unknown) => {
-    setLocalValue(newValue);
+    setLocalValue(newValue as string | null);
     onUpdate(column.key, newValue);
   };
 
@@ -347,7 +349,6 @@ function NewRowFormatter({
         onSave={onSave}
         onCancel={onCancel}
         autoFocus={isFirstColumn}
-        showTextInput={true}
         showSaveCancel={false}
       />
     );
@@ -397,7 +398,7 @@ function NewRowFormatter({
       type={isNumberColumn ? "number" : "text"}
       className="w-full h-full px-2 py-1 border-0 outline-none bg-transparent"
       style={{ minHeight: "35px", backgroundColor: "white", color: "black" }}
-      value={String(localValue)}
+      value={localValue ?? ""}
       onChange={(e) => handleChange(e.target.value)}
       placeholder={`Enter ${column.name}`}
       onFocus={(e) => {

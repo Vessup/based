@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { SQLQueryWorkspace } from "@/components/SQLQueryWorkspace";
 import {
   Breadcrumb,
@@ -11,8 +13,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useCustomQueries } from "@/hooks/useCustomQueries";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 
 export default function QueryPage() {
   const params = useParams<{ queryId: string }>();

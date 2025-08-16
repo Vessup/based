@@ -1,12 +1,12 @@
 "use client";
 
-import { TableDataGrid } from "@/components/TableDataGrid";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCheck, Copy, Database } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Column } from "react-data-grid";
 import { toast } from "sonner";
+import { TableDataGrid } from "@/components/TableDataGrid";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 interface QueryResultsProps {
   results: Record<string, unknown>[] | null;
@@ -193,7 +193,10 @@ export function QueryResults({
           onRowsChange={() => {}} // No editing for query results
           isAddingNewRow={false}
           onAddRecord={() => {}} // No adding records for query results
+          onEditSelected={() => {}} // No editing for query results
           onDeleteSelected={() => {}} // No deleting for query results
+          isSaving={false}
+          isInBulkEditMode={false}
           isDeleting={false}
           pagination={{ total: results.length }}
           currentPage={1}

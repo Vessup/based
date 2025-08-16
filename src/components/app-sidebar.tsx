@@ -1,7 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
 import {
   ChevronDown,
   Code,
@@ -15,9 +13,16 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import NProgress from "nprogress";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 import {
   AlertDialog,
@@ -29,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -65,8 +71,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useCustomQueries } from "@/hooks/useCustomQueries";
 import type { CustomQuery } from "@/hooks/useCustomQueries";
+import { useCustomQueries } from "@/hooks/useCustomQueries";
 import {
   createDatabaseSchema,
   createTableAction,
@@ -77,12 +83,6 @@ import {
   renameDatabaseSchema,
   renameTableAction,
 } from "@/lib/actions";
-import {
-  useParams,
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
 
 export function AppSidebar() {
   const [schemas, setSchemas] = useState<string[]>(["public"]);

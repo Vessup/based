@@ -1,9 +1,9 @@
 "use client";
 
-import { useCustomQueries } from "@/hooks/useCustomQueries";
-import { executeCustomSQLQuery } from "@/lib/actions";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useCustomQueries } from "@/hooks/useCustomQueries";
+import { executeCustomSQLQuery } from "@/lib/actions";
 import { QueryResults } from "./QueryResults";
 import { SQLEditor } from "./SQLEditor";
 
