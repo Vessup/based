@@ -1,5 +1,6 @@
 # ---- Build Stage ----
 FROM oven/bun:1.2.13 as builder
+LABEL org.opencontainers.image.source="https://github.com/vessup/based"
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
