@@ -46,6 +46,7 @@ jobs:
       - name: Build and push Docker image
         uses: depot/build-push-action@v1
         with:
+          project: 0982bfx17g
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
