@@ -56,6 +56,7 @@ bun seedDb       # Seed database with sample data
 
 ### Environment Variables
 Required for database connection:
+- `POSTGRES_HOST` (defaults to "localhost")
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`

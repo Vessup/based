@@ -37,7 +37,7 @@ services:
       - "3001:3001"
     environment:
       NODE_ENV: production
-      DB_HOST: postgres
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

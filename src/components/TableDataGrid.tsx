@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   Edit,
   ListFilter,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Trash2,
@@ -229,7 +228,7 @@ export function TableDataGrid({
   React.useEffect(() => {
     setVisibleColumns(columns.map((col) => col.key));
   }, [columns]);
-  const visibleCols = React.useMemo(
+  const _visibleCols = React.useMemo(
     () => columns.filter((col) => visibleColumns.includes(col.key)),
     [columns, visibleColumns],
   );
@@ -735,7 +734,7 @@ export function TableDataGrid({
           )}
           style={{ width: "100%" }}
           onCellContextMenu={handleCellContextMenu}
-          rowClass={(row, index) => {
+          rowClass={(row, _index) => {
             const id = String(row.id || row.ID || row.uuid || row.UUID);
             const isNewRow = id.startsWith("new-");
             return clsx(isNewRow && "new-row rdg-row-new-row");

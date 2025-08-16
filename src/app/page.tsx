@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, Plug, Settings, TrendingUp } from "lucide-react";
+import { Plug, Settings, TrendingUp } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   checkDatabaseConnectionHealth,
   fetchDatabaseStats,
   fetchDatabaseStatsWithConfig,
-  testCustomDatabaseConnection,
+  testAndSetCustomConnection,
 } from "@/lib/actions";
 
 interface DatabaseHealth {
@@ -197,6 +197,7 @@ export default function Home() {
     password: "",
     database: "",
   });
+  const [_connectionUpdated, setConnectionUpdated] = useState(false);
 
   // Fetch default config from server
   useEffect(() => {
@@ -239,13 +240,28 @@ export default function Home() {
   const connectWithCustomConfig = useCallback(async () => {
     try {
       setConnecting(true);
-      const healthResult = await testCustomDatabaseConnection(connectionConfig);
-      setHealth(healthResult);
 
-      if (healthResult.connected) {
+      // Use the new server action that tests AND sets the connection
+      const result = await testAndSetCustomConnection(connectionConfig);
+
+      setHealth({
+        connected: result.connected,
+        serverTime: result.serverTime,
+        serverVersion: result.serverVersion,
+        message: result.message,
+      });
+
+      if (result.connected && result.success) {
+        // Fetch stats with the new connection
         const statsResult =
           await fetchDatabaseStatsWithConfig(connectionConfig);
         setStats(statsResult);
+
+        // Signal that connection was updated to trigger sidebar refresh
+        setConnectionUpdated(true);
+
+        // Dispatch a custom event to notify the sidebar
+        window.dispatchEvent(new CustomEvent("database-connection-updated"));
       } else {
         setStats(null);
       }

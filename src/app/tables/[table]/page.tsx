@@ -1,23 +1,15 @@
 "use client";
 
-import { format, isValid, parseISO } from "date-fns";
-import {
-  Calendar as CalendarIcon,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { isValid, parseISO } from "date-fns";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Column,
-  DataGrid,
   type RenderEditCellProps,
   SelectColumn,
-  textEditor,
 } from "react-data-grid";
 import { Toaster, toast } from "sonner";
-import { DateInput } from "@/components/date-input";
+import { DateInput } from "@/components/dateInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,12 +21,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useFocusManagement } from "@/hooks/useFocusManagement";
 import {
   addTableRow,
@@ -262,7 +248,7 @@ function DateFormatter({ value }: { value: unknown }) {
         return `${year}-${month}-${day}`;
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Fall back to raw value if parsing fails
   }
 
@@ -363,7 +349,10 @@ function NewRowFormatter({
           onChange={(e) => handleChange(e.target.checked)}
           className="w-4 h-4"
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              onSave?.();
+            } else if (e.key === "Enter") {
               e.preventDefault();
               const checkbox = e.currentTarget;
               checkbox.checked = !checkbox.checked;
@@ -371,9 +360,6 @@ function NewRowFormatter({
             } else if (e.key === "Escape") {
               e.preventDefault();
               onCancel?.();
-            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              onSave?.();
             } else if (e.key === "Tab") {
               e.stopPropagation();
             } else if (
@@ -521,12 +507,12 @@ export default function TablePage() {
   const router = useRouter();
 
   // Focus management hook
-  const { focusNewRowInput, clearAllTimeouts } = useFocusManagement();
+  const { focusNewRowInput } = useFocusManagement();
 
   // State for data
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -710,7 +696,7 @@ export default function TablePage() {
   }, [editingRows, editedRowsData, originalRowsMap]);
 
   // Open delete confirmation dialog for a single row
-  const openRowDeleteDialog = useCallback((rowKey: string) => {
+  const _openRowDeleteDialog = useCallback((rowKey: string) => {
     setRowToDelete(rowKey);
     setPendingDeleteAction("row");
     setIsDeleteDialogOpen(true);
@@ -768,7 +754,7 @@ export default function TablePage() {
   };
 
   // Determine if a column is a date type
-  const isDateColumn = (dataType: string) => {
+  const _isDateColumn = (dataType: string) => {
     return (
       dataType.toLowerCase().includes("date") ||
       dataType.toLowerCase().includes("timestamp")
@@ -1007,7 +993,7 @@ export default function TablePage() {
   }, []);
 
   // Function to open delete dialog for a row - defined with useCallback to avoid recreating
-  const handleRowDelete = useCallback((rowKey: string) => {
+  const _handleRowDelete = useCallback((rowKey: string) => {
     setRowToDelete(rowKey);
     setPendingDeleteAction("row");
     setIsDeleteDialogOpen(true);

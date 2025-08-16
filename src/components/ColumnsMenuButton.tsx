@@ -33,7 +33,7 @@ export const ColumnsMenuButton: React.FC<ColumnsMenuButtonProps> = ({
   }, [allColumns, search]);
 
   const allKeys = allColumns.map((col) => col.key);
-  const allVisible = visibleColumns.length === allKeys.length;
+  const _allVisible = visibleColumns.length === allKeys.length;
 
   return (
     <DropdownMenu>

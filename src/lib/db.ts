@@ -1,60 +1,199 @@
 import { SQL } from "bun";
-import { config } from "./config";
+import { config as defaultConfig } from "./config";
 
-// Singleton pattern to prevent multiple connections during hot module replacement
-let dbInstance: SQL | null = null;
-
-// Use global variable to persist connection across hot reloads
-declare global {
-  var dbGlobal: SQL | undefined;
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
 }
 
-// Get or create the database connection
-function getDbConnection() {
-  // Check if we already have an instance in the module
-  if (dbInstance) {
-    return dbInstance;
+// Store custom connection globally for hot reloads
+let customConnectionCache: {
+  config: DatabaseConfig | null;
+  connection: SQL | null;
+} = {
+  config: null,
+  connection: null,
+};
+
+// Global for default connection
+declare global {
+  var dbGlobal: SQL | undefined;
+  var customDbGlobal:
+    | {
+        config: DatabaseConfig | null;
+        connection: SQL | null;
+      }
+    | undefined;
+}
+
+// Persist custom connection across hot reloads
+if (global.customDbGlobal) {
+  customConnectionCache = global.customDbGlobal;
+}
+
+/**
+ * Gets the current custom configuration from memory
+ */
+function _getCustomConfig(): DatabaseConfig | null {
+  return customConnectionCache.config;
+}
+
+/**
+ * Creates a new database connection with the given configuration
+ */
+function createConnection(config: DatabaseConfig): SQL {
+  return new SQL(config);
+}
+
+/**
+ * Gets the current database configuration (custom if available, otherwise default)
+ */
+export function getCurrentConfig(): DatabaseConfig {
+  return customConnectionCache.config || defaultConfig;
+}
+
+/**
+ * Gets or creates the appropriate database connection
+ * Uses custom connection if custom config is stored, otherwise uses default
+ */
+export function getDbConnection(): SQL {
+  const customConfig = customConnectionCache.config;
+
+  if (customConfig) {
+    // Check if we have a cached custom connection with the same config
+    if (
+      customConnectionCache.config &&
+      JSON.stringify(customConnectionCache.config) ===
+        JSON.stringify(customConfig) &&
+      customConnectionCache.connection
+    ) {
+      return customConnectionCache.connection;
+    }
+
+    // Close old custom connection if it exists
+    if (customConnectionCache.connection) {
+      try {
+        customConnectionCache.connection.close();
+      } catch (error) {
+        console.warn("Error closing old custom connection:", error);
+      }
+    }
+
+    // Create new custom connection
+    console.log("Creating new custom database connection");
+    const newConnection = createConnection(customConfig);
+    customConnectionCache = {
+      config: customConfig,
+      connection: newConnection,
+    };
+
+    // Persist for hot reloads
+    global.customDbGlobal = customConnectionCache;
+
+    return newConnection;
   }
 
-  // Check if we have an instance in the global object (persists across hot reloads)
+  // Use default connection (existing logic)
   if (global.dbGlobal) {
-    dbInstance = global.dbGlobal;
-    return dbInstance;
+    return global.dbGlobal;
   }
 
-  // Create a new instance if none exists
-  console.log("Creating new database connection");
-  dbInstance = new SQL(config);
-  global.dbGlobal = dbInstance;
+  console.log("Creating new default database connection");
+  const defaultConnection = createConnection(defaultConfig);
+  global.dbGlobal = defaultConnection;
 
-  return dbInstance;
+  return defaultConnection;
+}
+
+/**
+ * Sets a custom database configuration (server-side only)
+ * This will be used by server actions to update the connection
+ */
+export function setCustomConfig(config: DatabaseConfig | null): void {
+  if (typeof window !== "undefined") {
+    throw new Error("setCustomConfig can only be called on the server");
+  }
+
+  if (config) {
+    // Close existing custom connection
+    if (customConnectionCache.connection) {
+      try {
+        customConnectionCache.connection.close();
+      } catch (error) {
+        console.warn("Error closing existing custom connection:", error);
+      }
+    }
+
+    // Update cache
+    customConnectionCache = {
+      config,
+      connection: null, // Will be created on next getDbConnection call
+    };
+
+    global.customDbGlobal = customConnectionCache;
+  } else {
+    // Clear custom connection
+    if (customConnectionCache.connection) {
+      try {
+        customConnectionCache.connection.close();
+      } catch (error) {
+        console.warn("Error closing custom connection:", error);
+      }
+    }
+
+    customConnectionCache = {
+      config: null,
+      connection: null,
+    };
+
+    global.customDbGlobal = customConnectionCache;
+  }
+}
+
+/**
+ * Tests a database connection with the given configuration
+ */
+export async function testConnection(config: DatabaseConfig): Promise<{
+  connected: boolean;
+  serverTime?: string;
+  serverVersion?: string;
+  message: string;
+}> {
+  let testConnection: SQL | null = null;
+  try {
+    testConnection = createConnection(config);
+
+    const result =
+      await testConnection`SELECT NOW() as server_time, version() as server_version`;
+
+    return {
+      connected: true,
+      serverTime: result[0]?.server_time,
+      serverVersion: result[0]?.server_version,
+      message: "Database connection is healthy",
+    };
+  } catch (error) {
+    console.error("Test database connection failed:", error);
+    return {
+      connected: false,
+      message: `Database connection failed: ${error}`,
+    };
+  } finally {
+    if (testConnection) {
+      try {
+        testConnection.close();
+      } catch (closeError) {
+        console.warn("Error closing test connection:", closeError);
+      }
+    }
+  }
 }
 
 // Export the database connection
 export const db = getDbConnection();
-
-// Add cleanup for the database connection
-if (process.env.NODE_ENV !== "production") {
-  // Handle cleanup in development mode
-  process.on("SIGTERM", () => {
-    console.log("Closing database connection due to SIGTERM");
-    if (dbInstance) {
-      dbInstance.close();
-      dbInstance = null;
-      global.dbGlobal = undefined;
-    }
-  });
-
-  process.on("SIGINT", () => {
-    console.log("Closing database connection due to SIGINT");
-    if (dbInstance) {
-      dbInstance.close();
-      dbInstance = null;
-      global.dbGlobal = undefined;
-    }
-    process.exit(0);
-  });
-}
 
 /**
  * Creates a new schema in the database
@@ -63,6 +202,8 @@ if (process.env.NODE_ENV !== "production") {
  */
 export async function createSchema(schemaName: string) {
   try {
+    const db = getDbConnection();
+
     // Check if schema already exists
     const schemaExists = await db`
       SELECT EXISTS (
@@ -100,6 +241,8 @@ export async function createSchema(schemaName: string) {
  */
 export async function getSchemas() {
   try {
+    const db = getDbConnection();
+
     // Query the PostgreSQL information_schema to get all schemas
     // Filtering out system schemas
     const result = await db`
@@ -125,6 +268,8 @@ export async function getSchemas() {
  */
 export async function deleteSchema(schemaName: string) {
   try {
+    const db = getDbConnection();
+
     // Prevent deletion of the public schema
     if (schemaName === "public") {
       return {
@@ -172,6 +317,8 @@ export async function deleteSchema(schemaName: string) {
  */
 export async function renameSchema(oldName: string, newName: string) {
   try {
+    const db = getDbConnection();
+
     // Prevent renaming of the public schema
     if (oldName === "public") {
       return {
@@ -236,6 +383,8 @@ export async function renameSchema(oldName: string, newName: string) {
  */
 export async function getTables(schema = "public") {
   try {
+    const db = getDbConnection();
+
     // Query the PostgreSQL information_schema to get all tables in the specified schema
     const result = await db`
       SELECT table_name
@@ -259,6 +408,8 @@ export async function getTables(schema = "public") {
  */
 export async function getTableColumns(tableName: string) {
   try {
+    const db = getDbConnection();
+
     // Enhanced query to include foreign key info
     const result = await db`
       SELECT
@@ -314,6 +465,8 @@ export async function getTableData(
   sortDirection?: "asc" | "desc",
 ) {
   try {
+    const db = getDbConnection();
+
     // Calculate offset
     const offset = (page - 1) * pageSize;
 
@@ -409,6 +562,8 @@ export async function getTableData(
  */
 export async function deleteTableRows(tableName: string, ids: string[]) {
   try {
+    const db = getDbConnection();
+
     if (!ids.length) {
       return { success: false, deletedCount: 0, message: "No IDs provided" };
     }
@@ -529,6 +684,8 @@ export async function deleteTableRows(tableName: string, ids: string[]) {
  */
 export async function renameTable(oldTableName: string, newTableName: string) {
   try {
+    const db = getDbConnection();
+
     // First, verify the old table exists
     const tableExists = await db`
       SELECT EXISTS (
@@ -586,6 +743,8 @@ export async function renameTable(oldTableName: string, newTableName: string) {
  */
 export async function createTable(schemaName: string, tableName: string) {
   try {
+    const db = getDbConnection();
+
     // Check if table already exists
     const tableExists = await db`
       SELECT EXISTS (
@@ -631,6 +790,8 @@ export async function createTable(schemaName: string, tableName: string) {
  */
 export async function deleteTable(tableName: string) {
   try {
+    const db = getDbConnection();
+
     // First, verify the table exists
     const tableExists = await db`
       SELECT EXISTS (
@@ -675,6 +836,8 @@ export async function insertTableRow(
   data: Record<string, unknown>,
 ) {
   try {
+    const db = getDbConnection();
+
     // First, verify the table exists
     const tableExists = await db`
       SELECT EXISTS (
@@ -714,8 +877,8 @@ export async function insertTableRow(
     }
 
     // Prepare column names and values for the INSERT query
-    const insertColumns = validColumns.map((col: Column) => col.column_name);
-    const insertValues = validColumns.map(
+    const _insertColumns = validColumns.map((col: Column) => col.column_name);
+    const _insertValues = validColumns.map(
       (col: Column) => data[col.column_name],
     );
 
@@ -763,6 +926,8 @@ export async function updateTableCell(
   value: unknown,
 ) {
   try {
+    const db = getDbConnection();
+
     // First, verify the table exists
     const tableExists = await db`
       SELECT EXISTS (
@@ -863,6 +1028,8 @@ async function validateColumnData(
   data: Record<string, unknown>,
 ) {
   try {
+    const db = getDbConnection();
+
     // Get table columns with their constraints
     const columns = await db`
       SELECT 
@@ -972,6 +1139,8 @@ export async function bulkUpdateTableRows(
   }>,
 ) {
   try {
+    const db = getDbConnection();
+
     if (!updates.length) {
       return {
         success: false,
@@ -1068,7 +1237,7 @@ export async function bulkUpdateTableRows(
         // Build a bulk UPDATE using CASE statements for efficiency
         // This updates all rows for a single column in one query
         const ids = columnData.map((item) => item.id);
-        const values = columnData.map((item) => item.value);
+        const _values = columnData.map((item) => item.value);
 
         // Create CASE statement for bulk update
         let caseStatement = `CASE "${primaryKeyColumn}"`;
@@ -1113,6 +1282,8 @@ export async function bulkUpdateTableRows(
  */
 export async function executeCustomQuery(query: string) {
   try {
+    const db = getDbConnection();
+
     if (!query.trim()) {
       return {
         success: false,
@@ -1210,6 +1381,8 @@ export async function executeCustomQuery(query: string) {
  */
 export async function checkDatabaseHealth() {
   try {
+    const db = getDbConnection();
+
     // Simple connectivity test
     const result =
       await db`SELECT NOW() as server_time, version() as server_version`;
@@ -1232,73 +1405,6 @@ export async function checkDatabaseHealth() {
 }
 
 /**
- * Tests database connection with custom configuration
- * @param customConfig Custom database configuration
- * @returns Object containing connection status and information
- */
-export async function testDatabaseConnection(customConfig: {
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-  database: string;
-}) {
-  let testConnection: SQL | null = null;
-  try {
-    // Create a temporary connection with custom config
-    testConnection = new SQL(customConfig);
-
-    // Test the connection
-    const result =
-      await testConnection`SELECT NOW() as server_time, version() as server_version`;
-
-    return {
-      connected: true,
-      serverTime: result[0]?.server_time,
-      serverVersion: result[0]?.server_version,
-      message: "Database connection is healthy",
-    };
-  } catch (error) {
-    console.error("Test database connection failed:", error);
-    return {
-      connected: false,
-      serverTime: null,
-      serverVersion: null,
-      message: `Database connection failed: ${error}`,
-    };
-  } finally {
-    // Always close the test connection
-    if (testConnection) {
-      try {
-        testConnection.close();
-      } catch (closeError) {
-        console.warn("Error closing test connection:", closeError);
-      }
-    }
-  }
-}
-
-/**
- * Creates a temporary connection for custom operations
- * @param customConfig Custom database configuration
- * @returns SQL instance or null if connection failed
- */
-async function createTempConnection(customConfig: {
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-  database: string;
-}) {
-  try {
-    return new SQL(customConfig);
-  } catch (error) {
-    console.error("Failed to create temporary connection:", error);
-    return null;
-  }
-}
-
-/**
  * Gets performance-focused database statistics for developers
  * @param customConfig Optional custom database configuration
  * @returns Object containing performance metrics and statistics
@@ -1310,18 +1416,21 @@ export async function getDatabaseStats(customConfig?: {
   password: string;
   database: string;
 }) {
-  let connection = db;
+  let connection = getDbConnection();
   let shouldCloseConnection = false;
 
   try {
     // Use custom connection if provided
     if (customConfig) {
-      const tempConnection = await createTempConnection(customConfig);
-      if (!tempConnection) {
-        throw new Error("Failed to create connection with custom config");
+      try {
+        const tempConnection = new SQL(customConfig);
+        connection = tempConnection;
+        shouldCloseConnection = true;
+      } catch (error) {
+        throw new Error(
+          `Failed to create connection with custom config: ${error}`,
+        );
       }
-      connection = tempConnection;
-      shouldCloseConnection = true;
     }
 
     // Execute all queries in parallel using Promise.allSettled for resilience

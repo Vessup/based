@@ -5,6 +5,7 @@ import {
   checkDatabaseHealth,
   createSchema,
   createTable,
+  type DatabaseConfig,
   updateTableCell as dbUpdateTableCell,
   deleteSchema,
   deleteTable,
@@ -18,7 +19,8 @@ import {
   insertTableRow,
   renameSchema,
   renameTable,
-  testDatabaseConnection,
+  setCustomConfig,
+  testConnection,
 } from "./db";
 
 /**
@@ -370,7 +372,7 @@ export async function testCustomDatabaseConnection(config: {
   database: string;
 }) {
   try {
-    const result = await testDatabaseConnection(config);
+    const result = await testConnection(config);
     return result;
   } catch (error) {
     console.error("Error testing custom database connection:", error);
@@ -480,6 +482,105 @@ export async function updateRows(
       success: false,
       message: `Failed to update rows in table ${tableName}`,
       error: String(error),
+    };
+  }
+}
+
+/**
+ * Server action to set custom database connection configuration
+ * This updates the global connection and stores the config in cookies
+ */
+export async function setCustomDatabaseConnection(
+  config: DatabaseConfig | null,
+) {
+  try {
+    // Test the connection first if config is provided
+    if (config) {
+      const testResult = await testConnection(config);
+      if (!testResult.connected) {
+        return {
+          success: false,
+          message: testResult.message,
+          connected: false,
+        };
+      }
+    }
+
+    // Update the global connection manager
+    setCustomConfig(config);
+
+    return {
+      success: true,
+      message: config
+        ? "Custom database connection set successfully"
+        : "Reset to default database connection",
+      connected: true,
+    };
+  } catch (error) {
+    console.error("Error setting custom database connection:", error);
+    return {
+      success: false,
+      message: `Failed to set custom database connection: ${error}`,
+      connected: false,
+    };
+  }
+}
+
+/**
+ * Server action to test and apply custom database connection
+ * This combines testing and setting the connection in one action
+ */
+export async function testAndSetCustomConnection(config: DatabaseConfig) {
+  try {
+    // First test the connection
+    const testResult = await testConnection(config);
+
+    if (!testResult.connected) {
+      return {
+        success: false,
+        connected: false,
+        serverTime: testResult.serverTime,
+        serverVersion: testResult.serverVersion,
+        message: testResult.message,
+      };
+    }
+
+    // If test successful, set as the current connection
+    const setResult = await setCustomDatabaseConnection(config);
+
+    return {
+      success: setResult.success,
+      connected: testResult.connected,
+      serverTime: testResult.serverTime,
+      serverVersion: testResult.serverVersion,
+      message: setResult.success
+        ? "Connection successful and set as active"
+        : setResult.message,
+    };
+  } catch (error) {
+    console.error("Error testing and setting custom connection:", error);
+    return {
+      success: false,
+      connected: false,
+      serverTime: undefined,
+      serverVersion: undefined,
+      message: `Failed to test and set connection: ${error}`,
+    };
+  }
+}
+
+/**
+ * Server action to clear custom database connection and revert to default
+ */
+export async function clearCustomDatabaseConnection() {
+  try {
+    return await setCustomDatabaseConnection(null);
+  } catch (error) {
+    console.error("Error clearing custom database connection:", error);
+    return {
+      success: false,
+      message: `Failed to clear custom database connection: ${error}`,
+      connected: false,
     };
   }
 }

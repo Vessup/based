@@ -86,7 +86,7 @@ export function QueryResults({
 
       // Reset copy indication after 2 seconds
       setTimeout(() => setCopiedData(null), 2000);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to copy results to clipboard");
     }
   };

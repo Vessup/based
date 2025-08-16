@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Suspense } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/appSidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import "./globals.css";
 import { NProgressHandler } from "@/components/NProgressHandler";

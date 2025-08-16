@@ -1,16 +1,12 @@
 "use client";
 
 import {
-  ChevronDown,
   Code,
-  Copy,
   Database,
-  Edit2,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Table,
-  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -22,7 +18,7 @@ import {
 import NProgress from "nprogress";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from "@/components/themeToggle";
 
 import {
   AlertDialog,
@@ -52,13 +48,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -71,7 +60,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { CustomQuery } from "@/hooks/useCustomQueries";
 import { useCustomQueries } from "@/hooks/useCustomQueries";
 import {
   createDatabaseSchema,
@@ -95,12 +83,12 @@ export function AppSidebar() {
     }
   });
   const [tables, setTables] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [tableToDelete, setTableToDelete] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteStatus, setDeleteStatus] = useState<{
+  const [deleteStatus, _setDeleteStatus] = useState<{
     loading: boolean;
     error: string | null;
   }>({ loading: false, error: null });
@@ -142,7 +130,7 @@ export function AppSidebar() {
 
   const params = useParams<{ table: string }>();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const _searchParams = useSearchParams();
   const pathname = usePathname();
 
   // Query management
@@ -279,6 +267,27 @@ export function AppSidebar() {
     loadTables();
   }, [loadSchemas, loadTables]);
 
+  // Listen for database connection updates and refresh data
+  useEffect(() => {
+    const handleConnectionUpdate = () => {
+      console.log("Database connection updated, refreshing sidebar data");
+      loadSchemas();
+      loadTables();
+    };
+
+    window.addEventListener(
+      "database-connection-updated",
+      handleConnectionUpdate,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "database-connection-updated",
+        handleConnectionUpdate,
+      );
+    };
+  }, [loadSchemas, loadTables]);
+
   // Focus create schema input when dialog opens
   useEffect(() => {
     if (isCreateSchemaDialogOpen) {
@@ -348,7 +357,7 @@ export function AppSidebar() {
     if (!tableToDelete) return;
 
     try {
-      const result = await deleteTableAction(tableToDelete);
+      const _result = await deleteTableAction(tableToDelete);
 
       // Refresh the tables list after successful deletion
       await loadTables();

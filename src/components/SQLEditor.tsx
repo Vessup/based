@@ -3,7 +3,7 @@
 import { sql } from "@codemirror/lang-sql";
 import { oneDark } from "@codemirror/theme-one-dark";
 import CodeMirror from "@uiw/react-codemirror";
-import { Loader2, Play, Save } from "lucide-react";
+import { Loader2, Play } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function SQLEditor({
   isReadOnly = false,
   placeholder = "",
 }: SQLEditorProps) {
-  const [isDirty, setIsDirty] = useState(false);
+  const [_isDirty, setIsDirty] = useState(false);
   const { theme } = useTheme();
 
   const handleQueryChange = useCallback(
